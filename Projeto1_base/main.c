@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
 
 #include "constants.h"
 #include "operations.h"
@@ -31,7 +33,16 @@ int main(int argc, char *argv[]) {
     unsigned int event_id, delay;
     size_t num_rows, num_columns, num_coords;
     size_t xs[MAX_RESERVATION_SIZE], ys[MAX_RESERVATION_SIZE];
-
+    char buffer[100] = {};
+    read(STDIN_FILENO, buffer,sizeof(buffer) - 1);
+    int file = open(buffer,O_RDONLY);
+    if (file == -1) {
+        write(STDERR_FILENO, "Error opening file\n", 19);
+        exit(EXIT_FAILURE);
+    }
+    char b[100] = {};
+    read(file, b, sizeof(b) - 1);
+    printf("%s",b);
     printf("> ");
     fflush(stdout);
 
