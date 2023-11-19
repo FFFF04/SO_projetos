@@ -39,18 +39,25 @@ int main(int argc, char *argv[]) {
     buffer[strlen(buffer)-1] = '\0';
 
     int file = open(buffer,O_RDONLY);
-    
     if (file == -1) {
+        write(STDERR_FILENO, "Error opening file\n", 19);
+        exit(EXIT_FAILURE);
+    }
+    int file_in_size = strlen(buffer)- strlen("jobs\0");
+    char *file_out_name = (char*) malloc(sizeof(char) * strlen(buffer));
+    strncpy(file_out_name, buffer, file_in_size);
+    strcat(file_out_name, "out\0");
+    int file_out = open(file_out_name, O_RDWR | O_CREAT, 0644);
+    if (file_out == -1) {
         write(STDERR_FILENO, "Error opening file\n", 19);
         exit(EXIT_FAILURE);
     }
     //char b[100] = {};
     //read(file, b, sizeof(b) - 1);
-    printf("> ");
+    //printf("> ");
     fflush(stdout);
     int i;
-    while ((i =  get_next(file)) >= 0)
-    {
+    while ((i =  get_next(file)) >= 0){
       switch (i) {
         case CMD_CREATE:
           if (parse_create(file, &event_id, &num_rows, &num_columns) != 0) {
@@ -84,7 +91,7 @@ int main(int argc, char *argv[]) {
             continue;
           }
 
-          if (ems_show(event_id)) {
+          if (ems_show(file_out, event_id)) {
             fprintf(stderr, "Failed to show event\n");
           }
 
@@ -136,5 +143,7 @@ int main(int argc, char *argv[]) {
           return 0;
       }
     }
+    close(file);
+    close(file_out);
   }
 }
