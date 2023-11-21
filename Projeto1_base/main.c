@@ -35,6 +35,7 @@ int main(int argc, char *argv[]) {
     size_t xs[MAX_RESERVATION_SIZE], ys[MAX_RESERVATION_SIZE];
     //char *buffer = (char*) malloc(sizeof(char)*100);
     char buffer[100] = {};
+    /*Falta erro*/
     read(STDIN_FILENO, buffer,100 - 1);
     buffer[strlen(buffer)-1] = '\0';
 
@@ -47,7 +48,7 @@ int main(int argc, char *argv[]) {
     char *file_out_name = (char*) malloc(sizeof(char) * strlen(buffer));
     strncpy(file_out_name, buffer, file_in_size);
     strcat(file_out_name, "out\0");
-    int file_out = open(file_out_name, O_RDWR | O_CREAT, 0644);
+    int file_out = open(file_out_name, O_CREAT | O_TRUNC | O_WRONLY , 0777);
     if (file_out == -1) {
         write(STDERR_FILENO, "Error opening file\n", 19);
         exit(EXIT_FAILURE);

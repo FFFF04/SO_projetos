@@ -170,17 +170,20 @@ int ems_show(int fd, unsigned int event_id) {
     fprintf(stderr, "Event not found\n");
     return 1;
   }
-
+  /*Falta erros*/
   for (size_t i = 1; i <= event->rows; i++) {
     for (size_t j = 1; j <= event->cols; j++) {
       unsigned int* seat = get_seat_with_delay(event, seat_index(event, i, j));
-      write(fd, &seat,sizeof(unsigned int));
+      char *str = (char*) malloc(sizeof(char)*16);
+      sprintf(str,"%u",*seat);
+      //str[strlen(str)-1] = ;
+      write(fd, str ,sizeof(char)*(strlen(str)));
       //printf("%u", *seat);
       if (j < event->cols) {
         //printf(" ");
         write(fd," ",sizeof(char));
       }
-    }
+    } 
     write(fd,"\n",sizeof(char));
     //printf("\n");
   }
