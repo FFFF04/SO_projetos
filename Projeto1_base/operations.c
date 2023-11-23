@@ -177,14 +177,23 @@ int ems_show(int fd, unsigned int event_id) {
       char *str = (char*) malloc(sizeof(char)*16);
       sprintf(str,"%u",*seat);
       //str[strlen(str)-1] = ;
-      write(fd, str ,sizeof(char)*(strlen(str)));
+      int escreve = write(fd, str ,sizeof(char)*(strlen(str)));
+      if (escreve < 0) {
+        errExit("Error writing in file");
+      }
       //printf("%u", *seat);
       if (j < event->cols) {
         //printf(" ");
-        write(fd," ",sizeof(char));
+        escreve = write(fd," ",sizeof(char));
+        if (escreve < 0) {
+          errExit("Error writing in file");
+        }
       }
     } 
-    write(fd,"\n",sizeof(char));
+    int escreve = write(fd,"\n",sizeof(char));
+    if (escreve < 0) {
+      errExit("Error writing in file");
+    }
     //printf("\n");
   }
 

@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #include "constants.h"
 #include "operations.h"
@@ -35,27 +36,27 @@ int main(int argc, char *argv[]) {
     size_t xs[MAX_RESERVATION_SIZE], ys[MAX_RESERVATION_SIZE];
     //char *buffer = (char*) malloc(sizeof(char)*100);
     char buffer[100] = {};
-    /*Falta erro*/
-    read(STDIN_FILENO, buffer,100 - 1);
+    int input = read(STDIN_FILENO, buffer,100 - 1);
+    if (input == -1){
+        errExit("Error reading path");
+    }
+    
     buffer[strlen(buffer)-1] = '\0';
 
     int file = open(buffer,O_RDONLY);
     if (file == -1) {
-        write(STDERR_FILENO, "Error opening file\n", 19);
-        exit(EXIT_FAILURE);
+        errExit("Error opening file");
     }
     int file_in_size = strlen(buffer)- strlen("jobs\0");
     char *file_out_name = (char*) malloc(sizeof(char) * strlen(buffer));
     strncpy(file_out_name, buffer, file_in_size);
     strcat(file_out_name, "out\0");
-    int file_out = open(file_out_name, O_CREAT | O_TRUNC | O_WRONLY , 0777);
+    int filePerms = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP |
+      S_IROTH | S_IWOTH;
+    int file_out = open(file_out_name, O_CREAT | O_TRUNC | O_WRONLY , filePerms);
     if (file_out == -1) {
-        write(STDERR_FILENO, "Error opening file\n", 19);
-        exit(EXIT_FAILURE);
+        errExit("Error opening file");
     }
-    //char b[100] = {};
-    //read(file, b, sizeof(b) - 1);
-    //printf("> ");
     fflush(stdout);
     int i;
     while ((i =  get_next(file)) >= 0){
@@ -144,7 +145,9 @@ int main(int argc, char *argv[]) {
           return 0;
       }
     }
-    close(file);
-    close(file_out);
+    if (close(file) == -1)
+      errExit("close input");
+    if (close(file) == -1)
+      errExit("close input");
   }
 }
