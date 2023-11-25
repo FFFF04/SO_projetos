@@ -12,17 +12,30 @@
 
 int main(int argc, char *argv[]) {
   unsigned int state_access_delay_ms = STATE_ACCESS_DELAY_MS;
-
-  if (argc > 1) {
-    char *endptr;
-    unsigned long int delay = strtoul(argv[1], &endptr, 10);
-
-    if (*endptr != '\0' || delay > UINT_MAX) {
-      fprintf(stderr, "Invalid delay value or value too large\n");
-      return 1;
+  char *path;
+  if (argc == 1)
+  {
+    /* DA ERRO */
+  }
+  
+  for (int i = 1; i < argc; i++)
+  {
+    if(i == 1){
+      path = argv[i];
+      printf("%s",path);
     }
+    if (i == 2)
+    {
+      char *endptr;
+      unsigned long int delay = strtoul(argv[2], &endptr, 10);
 
-    state_access_delay_ms = (unsigned int)delay;
+      if (*endptr != '\0' || delay > UINT_MAX) {
+        fprintf(stderr, "Invalid delay value or value too large\n");
+        return 1;
+      }
+
+      state_access_delay_ms = (unsigned int)delay;
+    }
   }
 
   if (ems_init(state_access_delay_ms)) {
@@ -36,26 +49,28 @@ int main(int argc, char *argv[]) {
     size_t xs[MAX_RESERVATION_SIZE], ys[MAX_RESERVATION_SIZE];
     //char *buffer = (char*) malloc(sizeof(char)*100);
     char buffer[100] = {};
-    int input = read(STDIN_FILENO, buffer,100 - 1);
+    long int input = read(STDIN_FILENO, buffer,100 - 1);
     if (input == -1){
-        errExit("Error reading path");
+        write(STDERR_FILENO, "Error reading input\n", 19);
+        exit(EXIT_FAILURE);
     }
     
     buffer[strlen(buffer)-1] = '\0';
 
     int file = open(buffer,O_RDONLY);
     if (file == -1) {
-        errExit("Error opening file");
+        write(STDERR_FILENO, "Error opening file\n", 19);
+        exit(EXIT_FAILURE);
     }
-    int file_in_size = strlen(buffer)- strlen("jobs\0");
     char *file_out_name = (char*) malloc(sizeof(char) * strlen(buffer));
-    strncpy(file_out_name, buffer, file_in_size);
+    strncpy(file_out_name, buffer, strlen(buffer)- strlen("jobs\0"));
     strcat(file_out_name, "out\0");
     int filePerms = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP |
       S_IROTH | S_IWOTH;
     int file_out = open(file_out_name, O_CREAT | O_TRUNC | O_WRONLY , filePerms);
     if (file_out == -1) {
-        errExit("Error opening file");
+        write(STDERR_FILENO, "Error opening file\n", 19);
+        exit(EXIT_FAILURE);
     }
     fflush(stdout);
     int i;
@@ -145,9 +160,14 @@ int main(int argc, char *argv[]) {
           return 0;
       }
     }
-    if (close(file) == -1)
-      errExit("close input");
-    if (close(file) == -1)
-      errExit("close input");
+    if (close(file) == -1){
+      write(STDERR_FILENO, "Error closing file\n", 20);
+      exit(EXIT_FAILURE);
+    }
+      
+    if (close(file) == -1){
+      write(STDERR_FILENO, "Error closing file\n", 20);
+      exit(EXIT_FAILURE);}
+      //errExit("close input");
   }
 }

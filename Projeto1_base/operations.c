@@ -176,23 +176,25 @@ int ems_show(int fd, unsigned int event_id) {
       unsigned int* seat = get_seat_with_delay(event, seat_index(event, i, j));
       char *str = (char*) malloc(sizeof(char)*16);
       sprintf(str,"%u",*seat);
-      //str[strlen(str)-1] = ;
-      int escreve = write(fd, str ,sizeof(char)*(strlen(str)));
+      long int escreve = write(fd, str ,sizeof(char)*(strlen(str)));
       if (escreve < 0) {
-        errExit("Error writing in file");
+        write(STDERR_FILENO, "Error writing in file\n", 22);
+        exit(EXIT_FAILURE);
       }
       //printf("%u", *seat);
       if (j < event->cols) {
         //printf(" ");
         escreve = write(fd," ",sizeof(char));
         if (escreve < 0) {
-          errExit("Error writing in file");
+          write(STDERR_FILENO, "Error writing in file\n", 22);
+          exit(EXIT_FAILURE);
         }
       }
     } 
-    int escreve = write(fd,"\n",sizeof(char));
+    long int escreve = write(fd,"\n",sizeof(char));
     if (escreve < 0) {
-      errExit("Error writing in file");
+      write(STDERR_FILENO, "Error writing in file\n", 22);
+      exit(EXIT_FAILURE);
     }
     //printf("\n");
   }
