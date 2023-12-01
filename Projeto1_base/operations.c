@@ -190,6 +190,7 @@ int ems_show(int fd, unsigned int event_id) {
           exit(EXIT_FAILURE);
         }
       }
+      free(str);
     } 
     long int escreve = write(fd,"\n",sizeof(char));
     if (escreve < 0) {

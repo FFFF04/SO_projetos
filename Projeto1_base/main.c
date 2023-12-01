@@ -51,16 +51,6 @@ int main(int argc, char *argv[]) {
     unsigned int event_id, delay;
     size_t num_rows, num_columns, num_coords;
     size_t xs[MAX_RESERVATION_SIZE], ys[MAX_RESERVATION_SIZE];
-    //char *buffer = (char*) malloc(sizeof(char)*100);
-    /*char buffer[100] = {};
-    long int input = read(STDIN_FILENO, buffer,100 - 1);
-    if (input == -1){
-        write(STDERR_FILENO, "Error reading input\n", 19);
-        exit(EXIT_FAILURE);
-    }
-    
-    buffer[strlen(buffer)-1] = '\0';*/
-
 
     while ((dp = readdir(dirp)) != NULL) {
       if (strcmp(dp->d_name, ".") == 0 || strcmp(dp->d_name, "..") == 0)
@@ -69,15 +59,24 @@ int main(int argc, char *argv[]) {
       char *filename = path;
       strcat(filename,"/");
       strcat(filename,dp->d_name);
-      printf("%s",filename);
+      size_t replace_str_len = strlen("jobs");
+      size_t replace_with_len = strlen("out");
+      size_t modified_len = strlen(dp->d_name) - replace_str_len + replace_with_len;
+      char *file_out_name = (char *)malloc((modified_len + 1) * sizeof(char));
+      char *found_position = strstr(dp->d_name, "jobs");
+      size_t copy_length = (size_t)(found_position - dp->d_name);
+      strncpy(file_out_name, dp->d_name, copy_length);
+      file_out_name[copy_length] = '\0';
+      strcat(file_out_name, "out");
+      strcat(file_out_name, found_position + replace_str_len);
+      printf("%s\n",file_out_name);
+      printf("%s\n",filename);
       int file = open(filename,O_RDONLY);
       if (file == -1) {
         write(STDERR_FILENO, "Error opening file\n", 19);
         exit(EXIT_FAILURE);
       }
-      char *file_out_name = "";
-      strncpy(file_out_name, filename, strlen(filename) - strlen("jobs"));
-      strcat(file_out_name, "out");
+
       int filePerms = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
       int file_out = open(file_out_name, O_CREAT | O_TRUNC | O_WRONLY , filePerms);
       if (file_out == -1) {
@@ -172,19 +171,18 @@ int main(int argc, char *argv[]) {
             return 0;
         }
       }
+      free(file_out_name);
       if (close(file) == -1){
         write(STDERR_FILENO, "Error closing file\n", 20);
         exit(EXIT_FAILURE);
       }
         
-      if (close(file) == -1){
+      if (close(file_out) == -1){
         write(STDERR_FILENO, "Error closing file\n", 20);
         exit(EXIT_FAILURE);
       }
         //errExit("close input");*/
       }
-
-
     break;
     
     /*char buffer[100] = "/home/francisco/SO/SO_projeto_1/Projeto1_base/jobs/test.jobs\0";
