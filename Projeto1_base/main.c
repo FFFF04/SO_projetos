@@ -52,17 +52,19 @@ int main(int argc, char *argv[]) {
     size_t xs[MAX_RESERVATION_SIZE], ys[MAX_RESERVATION_SIZE];
 
     while ((dp = readdir(dirp)) != NULL) {
+      /*printf("ola\n");
+      fflush(stdout);*/
       if (strcmp(dp->d_name, ".") == 0 || strcmp(dp->d_name, "..") == 0)
         continue;
       char *out = strstr(dp->d_name, ".out");
       if (out!=NULL && (strcmp(out, ".out") == 0))
         continue;
+      
       //printf("%s\n",dp->d_name);//nao esta alfabeticamente ordenado
       char *filename = (char *) malloc(strlen(path) + strlen("/") + strlen(dp->d_name) + 1); //erro para alocar memoria
       strcpy(filename,path);
       strcat(filename,"/");
       strcat(filename,dp->d_name);
-      
       
       // criar um cadeia de caracteres onde o .jobs e trocado por .out para escrever o output do ficheiro lido
       size_t replace_str_len = strlen("jobs");
@@ -78,8 +80,6 @@ int main(int argc, char *argv[]) {
       strcpy(filename_out,path);
       strcat(filename_out,"/");
       strcat(filename_out,file_out_name);
-      /*printf("%s\n",filename);
-      printf("%s\n",filename_out);*/
       int file = open(filename,O_RDONLY);
       if (file == -1) {
         write(STDERR_FILENO, "Error opening file\n", 19);
@@ -98,7 +98,7 @@ int main(int argc, char *argv[]) {
       fflush(stdout);
       int i;
       while ((i =  get_next(file)) >= 0){
-        switch (i) {
+          switch (i) {
           case CMD_CREATE:
             if (parse_create(file, &event_id, &num_rows, &num_columns) != 0) {
               fprintf(stderr, "Invalid command. See HELP for usage\n");
@@ -180,10 +180,22 @@ int main(int argc, char *argv[]) {
 
           case EOC:
             ems_terminate();
-            return 0;
+            if (close(file) == -1){
+            write(STDERR_FILENO, "Error closing file\n", 20);
+            exit(EXIT_FAILURE);
+            }
+
+            if (close(file_out) == -1){
+              write(STDERR_FILENO, "Error closing file\n", 20);
+              exit(EXIT_FAILURE);
+            }
+            //return 0;
         }
+        if (i == 9) break;
       }
-      if (close(file) == -1){
+    }
+    closedir(dirp);
+      /*if (close(file) == -1){
         printf("2");
         write(STDERR_FILENO, "Error closing file\n", 20);
         exit(EXIT_FAILURE);
@@ -196,6 +208,7 @@ int main(int argc, char *argv[]) {
       }
     }
     break;
-    closedir(dirp);
+    closedir(dirp);*/
   }
+  return 0;
 }
