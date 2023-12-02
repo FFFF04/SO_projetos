@@ -24,6 +24,9 @@ run: ems
 clean:
 	rm -f *.o ems
 
+remove:
+	rm jobs/*.out
+
 format:
 	@which clang-format >/dev/null 2>&1 || echo "Please install clang-format to run this command"
 	clang-format -i *.c *.h

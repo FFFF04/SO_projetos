@@ -42,10 +42,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  if (ems_init(state_access_delay_ms)) {
-    fprintf(stderr, "Failed to initialize EMS\n");
-    return 1;
-  }
+  
   while (1) {
     unsigned int event_id, delay;
     size_t num_rows, num_columns, num_coords;
@@ -59,7 +56,10 @@ int main(int argc, char *argv[]) {
       char *out = strstr(dp->d_name, ".out");
       if (out!=NULL && (strcmp(out, ".out") == 0))
         continue;
-      
+      if (ems_init(state_access_delay_ms)) {
+        fprintf(stderr, "Failed to initialize EMS\n");
+        return 1;
+      } 
       //printf("%s\n",dp->d_name);//nao esta alfabeticamente ordenado
       char *filename = (char *) malloc(strlen(path) + strlen("/") + strlen(dp->d_name) + 1); //erro para alocar memoria
       strcpy(filename,path);
@@ -194,21 +194,8 @@ int main(int argc, char *argv[]) {
         if (i == 9) break;
       }
     }
-    closedir(dirp);
-      /*if (close(file) == -1){
-        printf("2");
-        write(STDERR_FILENO, "Error closing file\n", 20);
-        exit(EXIT_FAILURE);
-      }
-        
-      if (close(file_out) == -1){
-        printf("1");
-        write(STDERR_FILENO, "Error closing file\n", 20);
-        exit(EXIT_FAILURE);
-      }
-    }
     break;
-    closedir(dirp);*/
   }
+  closedir(dirp);
   return 0;
 }
