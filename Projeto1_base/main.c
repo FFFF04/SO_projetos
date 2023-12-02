@@ -10,26 +10,36 @@
 #include "constants.h"
 #include "operations.h"
 #include "parser.h"
+#include "files.h"
 
 int main(int argc, char *argv[]) {
   unsigned int state_access_delay_ms = STATE_ACCESS_DELAY_MS;
   char *path = "";
   DIR *dirp;
   struct dirent *dp;
-  if (argc == 1){
-    /* DA ERRO */
+  if (argc < 3){
+    /*DA ERRO */
   }
   
   for (int i = 1; i < argc; i++){
     if(i == 1){
       dirp = opendir(argv[i]);
       if (dirp == NULL) {
-        write(STDERR_FILENO, "Error opening Dirpath\n", 22);
+        fprintf(stderr, "EError opening Dirpath\n");
         exit(EXIT_FAILURE);
       }
       path = argv[i];
     }
-    if (i == 2){
+    /*PERGUNTAR AO PROF*/
+    if(i == 2){
+      char* max_proc_char = argv[i];
+      int max_proc = atoi(max_proc_char);
+      if (max_proc <= 0) {
+        fprintf(stderr, "Error MAX_PROC not valid\n");
+        exit(EXIT_FAILURE);
+      }
+    }
+    if (i == 3){
       char *endptr;
       unsigned long int delay = strtoul(argv[2], &endptr, 10);
 
@@ -42,15 +52,12 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  
   while (1) {
     unsigned int event_id, delay;
     size_t num_rows, num_columns, num_coords;
     size_t xs[MAX_RESERVATION_SIZE], ys[MAX_RESERVATION_SIZE];
 
     while ((dp = readdir(dirp)) != NULL) {
-      /*printf("ola\n");
-      fflush(stdout);*/
       if (strcmp(dp->d_name, ".") == 0 || strcmp(dp->d_name, "..") == 0)
         continue;
       char *out = strstr(dp->d_name, ".out");
@@ -60,41 +67,8 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Failed to initialize EMS\n");
         return 1;
       } 
-      //printf("%s\n",dp->d_name);//nao esta alfabeticamente ordenado
-      char *filename = (char *) malloc(strlen(path) + strlen("/") + strlen(dp->d_name) + 1); //erro para alocar memoria
-      strcpy(filename,path);
-      strcat(filename,"/");
-      strcat(filename,dp->d_name);
-      
-      // criar um cadeia de caracteres onde o .jobs e trocado por .out para escrever o output do ficheiro lido
-      size_t replace_str_len = strlen("jobs");
-      size_t replace_with_len = strlen("out");
-      size_t modified_len = strlen(dp->d_name) - replace_str_len + replace_with_len;
-      char *file_out_name = (char *)malloc((modified_len + 1) * sizeof(char));
-      char *found_position = strstr(dp->d_name, "jobs");
-      size_t copy_length = (size_t)(found_position - dp->d_name);
-      strncpy(file_out_name, dp->d_name, copy_length);
-      file_out_name[copy_length] = '\0';
-      strcat(file_out_name, "out");
-      char *filename_out = (char *) malloc(strlen(path) + strlen("/") + strlen(file_out_name) + 1);
-      strcpy(filename_out,path);
-      strcat(filename_out,"/");
-      strcat(filename_out,file_out_name);
-      int file = open(filename,O_RDONLY);
-      if (file == -1) {
-        write(STDERR_FILENO, "Error opening file\n", 19);
-        exit(EXIT_FAILURE);
-      }
-
-      int filePerms = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
-      int file_out = open(filename_out, O_CREAT | O_TRUNC | O_WRONLY , filePerms);
-      if (file_out == -1) {
-        write(STDERR_FILENO, "Error opening file\n", 19);
-        exit(EXIT_FAILURE);
-      }
-      free(filename);
-      free(file_out_name);
-      free(filename_out);
+      int file = open_file_read(path,dp->d_name);
+      int file_out = open_file_out(path, dp->d_name);
       fflush(stdout);
       int i;
       while ((i =  get_next(file)) >= 0){
@@ -181,8 +155,8 @@ int main(int argc, char *argv[]) {
           case EOC:
             ems_terminate();
             if (close(file) == -1){
-            write(STDERR_FILENO, "Error closing file\n", 20);
-            exit(EXIT_FAILURE);
+              write(STDERR_FILENO, "Error closing file\n", 20);
+              exit(EXIT_FAILURE);
             }
 
             if (close(file_out) == -1){
@@ -191,7 +165,7 @@ int main(int argc, char *argv[]) {
             }
             //return 0;
         }
-        if (i == 9) break;
+        if (i == EOC) break;
       }
     }
     break;
