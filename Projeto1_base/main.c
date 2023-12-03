@@ -6,6 +6,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <sys/types.h>
 #include <dirent.h>
 
 #include "constants.h"
@@ -17,6 +18,7 @@ int main(int argc, char *argv[]) {
   unsigned int state_access_delay_ms = STATE_ACCESS_DELAY_MS;
   char *path = "";
   int max_proc = 0;
+  int max_threads = 0;
   DIR *dirp;
   struct dirent *dp;
   if (argc < 3){
@@ -41,9 +43,17 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
       }
     }
-    if (i == 3){
+    if(i == 3){
+      char* max_threads_char = argv[i];
+      max_threads = atoi(max_threads_char);
+      if (max_threads <= 0) {
+        fprintf(stderr, "Error MAX_THREADS not valid\n");
+        exit(EXIT_FAILURE);
+      }
+    }    
+    if (i == 4){
       char *endptr;
-      unsigned long int delay = strtoul(argv[2], &endptr, 10);
+      unsigned long int delay = strtoul(argv[i], &endptr, 10);
 
       if (*endptr != '\0' || delay > UINT_MAX) {
         fprintf(stderr, "Invalid delay value or value too large\n");
@@ -134,7 +144,8 @@ int main(int argc, char *argv[]) {
               break;
 
             case CMD_WAIT:
-              if (parse_wait(file, &delay, NULL) == -1) {  // thread_id is not implemented
+              pid_t thread_id = gettid();
+              if (parse_wait(file, &delay, NULL/*&thread_id*/) == -1) {  // thread_id is not implemented
                 fprintf(stderr, "Invalid command. See HELP for usage\n");
                 continue;
               }
