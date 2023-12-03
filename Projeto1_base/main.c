@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <dirent.h>
 
 #include "constants.h"
@@ -59,24 +60,24 @@ int main(int argc, char *argv[]) {
     size_t xs[MAX_RESERVATION_SIZE], ys[MAX_RESERVATION_SIZE];
     pid_t pid;
     int processos = 0;
-    while (processos <= max_proc)
-    {
-      if (processos == max_proc){
-        /*Wait*/
+    while ((dp = readdir(dirp)) != NULL){
+      if (strcmp(dp->d_name, ".") == 0 || strcmp(dp->d_name, "..") == 0)
+          continue;
+      char *out = strstr(dp->d_name, ".out");
+      if (out!=NULL && (strcmp(out, ".out") == 0))
+        continue;
+        
+      if (processos >= max_proc){
+        wait(NULL); 
+        processos--;
       }
       pid = fork();
-      processos++;
-      if ((dp = readdir(dirp)) != NULL) {
-        
-        if (pid == -1) /* tratar o erro */
-        if (pid == 0) {}
-        else{}
-        if (strcmp(dp->d_name, ".") == 0 || strcmp(dp->d_name, "..") == 0)
-          continue;
-        char *out = strstr(dp->d_name, ".out");
-        if (out!=NULL && (strcmp(out, ".out") == 0))
-          continue;
-        
+
+      if (pid == -1) {
+        fprintf(stderr, "Failed to create a process\n");
+        return 1;
+      }
+      if (pid == 0) {
         if (ems_init(state_access_delay_ms)) {
           fprintf(stderr, "Failed to initialize EMS\n");
           return 1;
@@ -181,10 +182,15 @@ int main(int argc, char *argv[]) {
           }
           if (i == EOC) break;
         }
+        exit(EXIT_SUCCESS);
       }
-      break;
+      else{
+        processos++;
+        continue;
+      }  
     }
-  }
+    break;
+  }      
   closedir(dirp);
   return 0;
 }
