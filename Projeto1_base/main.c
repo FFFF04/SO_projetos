@@ -78,7 +78,9 @@ int main(int argc, char *argv[]) {
         continue;
         
       if (processos >= max_proc){
-        wait(NULL); 
+        int p = wait(NULL);
+        printf("%d\n",p);
+        fflush(stdout);
         processos--;
       }
       pid = fork();
@@ -144,7 +146,7 @@ int main(int argc, char *argv[]) {
               break;
 
             case CMD_WAIT:
-              pid_t thread_id = gettid();
+              //pid_t thread_id = gettid();
               if (parse_wait(file, &delay, NULL/*&thread_id*/) == -1) {  // thread_id is not implemented
                 fprintf(stderr, "Invalid command. See HELP for usage\n");
                 continue;
@@ -201,7 +203,7 @@ int main(int argc, char *argv[]) {
       }  
     }
     break;
-  }      
+  }
   closedir(dirp);
   return 0;
 }
