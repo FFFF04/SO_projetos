@@ -12,33 +12,34 @@
 #include "parser.h"
 #include "process.h"
 
-void process(data valores){
+void* process(void* arg){
+    data valores = *(data*) arg;
     switch (valores.command) {
     case CMD_CREATE:
-        if (parse_create(valores.file, &event_id, &num_rows, &num_columns) != 0) {
+        if (parse_create(valores.file, &valores.event_id, &valores.num_rows, &valores.num_columns) != 0) {
             fprintf(stderr, "Invalid command. See HELP for usage\n");
-            continue;
+            return NULL;
         }
-        if (ems_create(event_id, num_rows, num_columns)) {
+        if (ems_create(valores.event_id, valores.num_rows, valores.num_columns)) {
             fprintf(stderr, "Failed to create event\n");
         }
         break;
     case CMD_RESERVE:
-        num_coords = parse_reserve(valores.file, MAX_RESERVATION_SIZE, &event_id, xs, ys);
-        if (num_coords == 0) {
+        valores.num_coords = parse_reserve(valores.file, MAX_RESERVATION_SIZE, &valores.event_id,valores.xs,valores.ys);
+        if (valores.num_coords == 0) {
             fprintf(stderr, "Invalid command. See HELP for usage\n");
-            continue;
+            return NULL;
         }
-        if (ems_reserve(event_id, num_coords, xs, ys)) {
+        if (ems_reserve(valores.event_id, valores.num_coords, valores.xs,valores.ys)) {
             fprintf(stderr, "Failed to reserve seats\n");
         }
         break;
     case CMD_SHOW:
-        if (parse_show(valores.file, &event_id) != 0) {
+        if (parse_show(valores.file, &valores.event_id) != 0) {
             fprintf(stderr, "Invalid command. See HELP for usage\n");
-            continue;
+            return NULL;
         }
-        if (ems_show(valores.file_out, event_id)) {
+        if (ems_show(valores.file_out, valores.event_id)) {
             fprintf(stderr, "Failed to show event\n");
         }
         break;
@@ -49,13 +50,13 @@ void process(data valores){
         break;
     case CMD_WAIT:
         //pid_t thread_id = gettid();
-        if (parse_wait(valores.file, &delay, NULL/*&thread_id*/) == -1) {  // thread_id is not implemented
+        if (parse_wait(valores.file, &valores.delay, NULL/*&thread_id*/) == -1) {  // thread_id is not implemented
             fprintf(stderr, "Invalid command. See HELP for usage\n");
-            continue;
+            return NULL;
         }
-        if (delay > 0) {
+        if (valores.delay > 0) {
             printf("Waiting...\n");
-            ems_wait(delay);
+            ems_wait(valores.delay);
         }
         break;
     case CMD_INVALID:
@@ -86,4 +87,5 @@ void process(data valores){
             exit(EXIT_FAILURE);
         }
     }
+    return NULL;
 }
