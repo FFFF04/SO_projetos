@@ -1,4 +1,3 @@
-#include  "files.h"
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,15 +6,24 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <pthread.h>
+#include "files.h"
 #include "constants.h"
 #include "operations.h"
 #include "parser.h"
 #include "process.h"
 
+pthread_mutex_t lock;
+
 void* process(void* arg){
     data valores = *(data*) arg;
+    /*if (pthread_mutex_init(&lock, NULL) != 0) {
+       fprintf(stderr, "Failed to initialize the lock\n");
+       exit(EXIT_FAILURE);
+    }*/
     switch (valores.command) {
     case CMD_CREATE:
+        //pthread_mutex_lock(&lock);
         if (parse_create(valores.file, &valores.event_id, &valores.num_rows, &valores.num_columns) != 0) {
             fprintf(stderr, "Invalid command. See HELP for usage\n");
             return NULL;
@@ -23,8 +31,11 @@ void* process(void* arg){
         if (ems_create(valores.event_id, valores.num_rows, valores.num_columns)) {
             fprintf(stderr, "Failed to create event\n");
         }
+        //pthread_mutex_unlock(&lock);
         break;
+    
     case CMD_RESERVE:
+        
         valores.num_coords = parse_reserve(valores.file, MAX_RESERVATION_SIZE, &valores.event_id,valores.xs,valores.ys);
         if (valores.num_coords == 0) {
             fprintf(stderr, "Invalid command. See HELP for usage\n");

@@ -82,13 +82,10 @@ int main(int argc, char *argv[]) {
         
       if (processos >= max_proc){
         // Falta por o id? nao nem sei se é
-        int p = wait(NULL);
-        printf("%d\n",p);
-        fflush(stdout);
+        wait(NULL);
         processos--;
       }
       pid = fork();
-
       if (pid == -1) {
         fprintf(stderr, "Failed to create a process\n");
         return 1;
@@ -97,12 +94,12 @@ int main(int argc, char *argv[]) {
         if (ems_init(state_access_delay_ms)) {
           fprintf(stderr, "Failed to initialize EMS\n");
           return 1;
-        } 
+        }
+        printf("%d\n",getpid());
         data* valores = (data*) malloc(sizeof(data));
         valores->file = open_file_read(path,dp->d_name);
         valores->file_out = open_file_out(path, dp->d_name);
         valores->delay = delay;
-        fflush(stdout);
         //int current_thread = 0;
         pthread_t thread_id[max_threads];
         //int i = 0;
