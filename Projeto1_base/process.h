@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include "constants.h"
+
 typedef struct{
   int file;
   int file_out;
@@ -14,7 +15,7 @@ typedef struct{
   size_t num_coords;
   size_t xs[MAX_RESERVATION_SIZE];
   size_t ys[MAX_RESERVATION_SIZE];
-
 }data;
+
 void* process(void* arg);
 #endif  // PROCESS_H

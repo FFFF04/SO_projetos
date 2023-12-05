@@ -21,7 +21,9 @@ int main(int argc, char *argv[]) {
   char *path = "";
   int max_proc = 0;
   int max_threads = 0;
-  unsigned int delay = 0;
+  /*char *path = "/home/francisco/SO/SO_projeto_1/Projeto1_base/jobs";
+  int max_proc = 1;
+  int max_threads = 2;*/
   DIR *dirp;
   struct dirent *dp;
   if (argc < 3){
@@ -37,7 +39,7 @@ int main(int argc, char *argv[]) {
       }
       path = argv[i];
     }
-    /*PERGUNTAR AO PROF*/
+    //PERGUNTAR AO PROF
     if(i == 2){
       char* max_proc_char = argv[i];
       max_proc = atoi(max_proc_char);
@@ -56,7 +58,7 @@ int main(int argc, char *argv[]) {
     }    
     if (i == 4){
       char *endptr;
-      delay = (unsigned int) strtoul(argv[i], &endptr, 10);///verificar e pq 2 delays
+      unsigned long int delay = (unsigned int) strtoul(argv[i], &endptr, 10);///verificar e pq 2 delays
 
       if (*endptr != '\0' || delay > UINT_MAX) {
         fprintf(stderr, "Invalid delay value or value too large\n");
@@ -96,24 +98,27 @@ int main(int argc, char *argv[]) {
           return 1;
         }
         printf("%d\n",getpid());
-        data* valores = (data*) malloc(sizeof(data));
-        valores->file = open_file_read(path,dp->d_name);
-        valores->file_out = open_file_out(path, dp->d_name);
-        valores->delay = delay;
-        //int current_thread = 0;
-        pthread_t thread_id[max_threads];
-        //int i = 0;
+        int file = open_file_read(path,dp->d_name);
+        int file_out = open_file_out(path, dp->d_name);
+        /*pthread_t thread_id[max_threads];
         int j = 0;
-        while (1){          
-          for (int i = 0; i < max_threads; i++)
-          { 
-            if ((valores->command = get_next(valores->file)) >= 0)
-            {
+        int paragem = 0;
+        data* valores;
+        while (1){
+          for (int i = 0; i < max_threads; i++){ 
+            valores = (data*) malloc(sizeof(data));
+            
+            if ((valores->command = get_next(valores->file)) >= 0){
+              paragem = valores->command;
+              valores->file = file;
+              valores->file_out = file_out;
               j++;
               if (pthread_create(&thread_id[i],NULL,&process,valores) != 0){
                 fprintf(stderr, "Failed to create thread\n");
                 exit(EXIT_FAILURE);
               }
+              if (valores->command == EOC) break;
+              
             }
           }
           for (int k = 0; k < j; k++){
@@ -121,13 +126,18 @@ int main(int argc, char *argv[]) {
               fprintf(stderr, "Failed to join thread\n");
               exit(EXIT_FAILURE);
             }
+            free(valores);
           }
           j = 0;
-          if (valores->command == EOC) break;
-        }
-        free(valores);
-        /*while ((valores->command = get_next(valores->file)) >= 0){
-          pthread_t thread_id[i];
+          if (paragem == EOC) break;
+        }*/
+        int current_thread = 0;
+        int i = 0;
+        //pthread_t thread_id[100];////alterar indice que controla
+        int comando = 0;
+        while ((comando = get_next(file)) >= 0){
+          printf("%d\n",comando);
+          //pthread_t thread_id[i];
           if(current_thread >= max_threads){
             if (pthread_join(thread_id[i - current_thread], NULL) != 0){
               fprintf(stderr, "Failed to create thread\n");
@@ -135,6 +145,11 @@ int main(int argc, char *argv[]) {
             }
             current_thread--;
           }
+          data* valores = (data*) malloc(sizeof(data));
+          valores->file = file;
+          valores->file_out = file_out;
+          valores->command = comando;
+          
           if (pthread_create(&thread_id[i],NULL,&process,valores) != 0){
             fprintf(stderr, "Failed to create thread\n");
             exit(EXIT_FAILURE);
@@ -142,6 +157,7 @@ int main(int argc, char *argv[]) {
           current_thread++;
           i++;
           if (valores->command == EOC) break;
+          free(valores);
         }
         i--;
         while(current_thread >= 0){
@@ -150,7 +166,7 @@ int main(int argc, char *argv[]) {
             exit(EXIT_FAILURE);
           }
           current_thread--;
-        }*/
+        }
         exit(EXIT_SUCCESS);
       }
       else{

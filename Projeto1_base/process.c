@@ -17,28 +17,32 @@ pthread_mutex_t lock;
 
 void* process(void* arg){
     data valores = *(data*) arg;
-    /*if (pthread_mutex_init(&lock, NULL) != 0) {
+    if (pthread_mutex_init(&lock, NULL) != 0) {
        fprintf(stderr, "Failed to initialize the lock\n");
        exit(EXIT_FAILURE);
-    }*/
+    }
     switch (valores.command) {
     case CMD_CREATE:
-        //pthread_mutex_lock(&lock);
+        
         if (parse_create(valores.file, &valores.event_id, &valores.num_rows, &valores.num_columns) != 0) {
             fprintf(stderr, "Invalid command. See HELP for usage\n");
+            free(arg);
             return NULL;
         }
         if (ems_create(valores.event_id, valores.num_rows, valores.num_columns)) {
             fprintf(stderr, "Failed to create event\n");
         }
-        //pthread_mutex_unlock(&lock);
-        break;
-    
+        free(arg);
+        return NULL;
+    }
+    pthread_mutex_lock(&lock);
+    switch (valores.command) {
     case CMD_RESERVE:
         
         valores.num_coords = parse_reserve(valores.file, MAX_RESERVATION_SIZE, &valores.event_id,valores.xs,valores.ys);
         if (valores.num_coords == 0) {
             fprintf(stderr, "Invalid command. See HELP for usage\n");
+            free(arg);
             return NULL;
         }
         if (ems_reserve(valores.event_id, valores.num_coords, valores.xs,valores.ys)) {
@@ -48,6 +52,7 @@ void* process(void* arg){
     case CMD_SHOW:
         if (parse_show(valores.file, &valores.event_id) != 0) {
             fprintf(stderr, "Invalid command. See HELP for usage\n");
+            free(arg);
             return NULL;
         }
         if (ems_show(valores.file_out, valores.event_id)) {
@@ -63,6 +68,7 @@ void* process(void* arg){
         //pid_t thread_id = gettid();
         if (parse_wait(valores.file, &valores.delay, NULL/*&thread_id*/) == -1) {  // thread_id is not implemented
             fprintf(stderr, "Invalid command. See HELP for usage\n");
+            free(arg);
             return NULL;
         }
         if (valores.delay > 0) {
@@ -98,5 +104,7 @@ void* process(void* arg){
             exit(EXIT_FAILURE);
         }
     }
+    pthread_mutex_unlock(&lock);
+    free(arg);
     return NULL;
 }
