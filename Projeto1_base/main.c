@@ -133,13 +133,13 @@ int main(int argc, char *argv[]) {
         }*/
         int current_thread = 0;
         int i = 0;
-        //pthread_t thread_id[100];////alterar indice que controla
-        int comando = 0;
-        while ((comando = get_next(file)) >= 0){
-          printf("%d\n",comando);
+        pthread_t thread_id[100];////alterar indice que controla
+        while (1){
+          //printf("%d\n",comando);
           //pthread_t thread_id[i];
+          //void* return_value;
           if(current_thread >= max_threads){
-            if (pthread_join(thread_id[i - current_thread], NULL) != 0){
+            if (pthread_join(thread_id[i - current_thread], NULL/*&return_value*/) != 0){
               fprintf(stderr, "Failed to create thread\n");
               exit(EXIT_FAILURE);
             }
@@ -148,16 +148,20 @@ int main(int argc, char *argv[]) {
           data* valores = (data*) malloc(sizeof(data));
           valores->file = file;
           valores->file_out = file_out;
-          valores->command = comando;
+          //valores->command = comando;
           
-          if (pthread_create(&thread_id[i],NULL,&process,valores) != 0){
+          if (pthread_create(&thread_id[i], NULL, &process, valores) != 0){
             fprintf(stderr, "Failed to create thread\n");
             exit(EXIT_FAILURE);
           }
           current_thread++;
           i++;
+          //int* comando = (int*)return_value;
+          printf("%d\n",valores->command);
+          fflush(stdout);
           if (valores->command == EOC) break;
-          free(valores);
+          //free(comando);
+          //free(valores);
         }
         i--;
         while(current_thread >= 0){

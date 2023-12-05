@@ -16,46 +16,53 @@
 pthread_mutex_t lock;
 
 void* process(void* arg){
-    data valores = *(data*) arg;
+    data *valores = (data*) arg;
+    if ((valores->command = get_next(valores->file)) < 0)
+    {
+       /*Da ERRO*/
+    }
+    //int* command = malloc(sizeof(int));
+    //command = &valores->command;
+    printf("valores.command: %d\n", valores->command);
     if (pthread_mutex_init(&lock, NULL) != 0) {
        fprintf(stderr, "Failed to initialize the lock\n");
        exit(EXIT_FAILURE);
     }
-    switch (valores.command) {
+    switch (valores->command) {
     case CMD_CREATE:
-        
-        if (parse_create(valores.file, &valores.event_id, &valores.num_rows, &valores.num_columns) != 0) {
+        //printf("Create : %d\n", valores->command);
+        if (parse_create(valores->file, &valores->event_id, &valores->num_rows, &valores->num_columns) != 0) {
             fprintf(stderr, "Invalid command. See HELP for usage\n");
             free(arg);
             return NULL;
         }
-        if (ems_create(valores.event_id, valores.num_rows, valores.num_columns)) {
+        if (ems_create(valores->event_id, valores->num_rows, valores->num_columns)) {
             fprintf(stderr, "Failed to create event\n");
         }
         free(arg);
-        return NULL;
+        return (void*) valores;
     }
     pthread_mutex_lock(&lock);
-    switch (valores.command) {
+    switch (valores->command) {
     case CMD_RESERVE:
         
-        valores.num_coords = parse_reserve(valores.file, MAX_RESERVATION_SIZE, &valores.event_id,valores.xs,valores.ys);
-        if (valores.num_coords == 0) {
+        valores->num_coords = parse_reserve(valores->file, MAX_RESERVATION_SIZE, &valores->event_id,valores->xs,valores->ys);
+        if (valores->num_coords == 0) {
             fprintf(stderr, "Invalid command. See HELP for usage\n");
             free(arg);
             return NULL;
         }
-        if (ems_reserve(valores.event_id, valores.num_coords, valores.xs,valores.ys)) {
+        if (ems_reserve(valores->event_id, valores->num_coords, valores->xs,valores->ys)) {
             fprintf(stderr, "Failed to reserve seats\n");
         }
         break;
     case CMD_SHOW:
-        if (parse_show(valores.file, &valores.event_id) != 0) {
+        if (parse_show(valores->file, &valores->event_id) != 0) {
             fprintf(stderr, "Invalid command. See HELP for usage\n");
             free(arg);
             return NULL;
         }
-        if (ems_show(valores.file_out, valores.event_id)) {
+        if (ems_show(valores->file_out, valores->event_id)) {
             fprintf(stderr, "Failed to show event\n");
         }
         break;
@@ -66,14 +73,14 @@ void* process(void* arg){
         break;
     case CMD_WAIT:
         //pid_t thread_id = gettid();
-        if (parse_wait(valores.file, &valores.delay, NULL/*&thread_id*/) == -1) {  // thread_id is not implemented
+        if (parse_wait(valores->file, &valores->delay, NULL/*&thread_id*/) == -1) {  // thread_id is not implemented
             fprintf(stderr, "Invalid command. See HELP for usage\n");
             free(arg);
             return NULL;
         }
-        if (valores.delay > 0) {
+        if (valores->delay > 0) {
             printf("Waiting...\n");
-            ems_wait(valores.delay);
+            ems_wait(valores->delay);
         }
         break;
     case CMD_INVALID:
@@ -95,16 +102,16 @@ void* process(void* arg){
       break;
     case EOC:
         ems_terminate();
-        if (close(valores.file) == -1){
+        if (close(valores->file) == 1){
             write(STDERR_FILENO, "Error closing file\n", 20);
             exit(EXIT_FAILURE);
         }
-        if (close(valores.file_out) == -1){
+        if (close(valores->file_out) == 1){
             write(STDERR_FILENO, "Error closing file\n", 20);
             exit(EXIT_FAILURE);
         }
     }
     pthread_mutex_unlock(&lock);
     free(arg);
-    return NULL;
+    return (void*) valores;
 }
