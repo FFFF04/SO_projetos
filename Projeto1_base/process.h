@@ -7,9 +7,8 @@
 typedef struct{
   int file;
   int file_out;
-  int command;
-
 }data;
+
 void read_files(char* path, char* name , int max_threads);
 void* process(void* arg);
 #endif  // PROCESS_H
