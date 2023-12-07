@@ -14,4 +14,5 @@ typedef struct{
 
 void read_files(char* path, char* name , int max_threads);
 void* process(void* arg);
+void barrier_wait();
 #endif  // PROCESS_H
