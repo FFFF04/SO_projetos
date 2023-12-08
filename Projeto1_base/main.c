@@ -77,9 +77,9 @@ int main(int argc, char *argv[]) {
     while ((dp = readdir(dirp)) != NULL){
       if (strcmp(dp->d_name, ".") == 0 || strcmp(dp->d_name, "..") == 0)
           continue;
-      char *out = strstr(dp->d_name, ".out");
-      if (out!=NULL && (strcmp(out, ".out") == 0))
-        continue;
+      char *out = strstr(dp->d_name, ".jobs");
+      if (out == NULL || strcmp(out, ".jobs") != 0)
+          continue;
         
       if (processos >= max_proc){
         // Falta por o id? nao nem sei se é

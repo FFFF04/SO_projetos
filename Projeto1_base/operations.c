@@ -179,7 +179,7 @@ int ems_show(int fd, unsigned int event_id) {
       sprintf(str,"%u",*seat);
       long int escreve = write(fd, str ,sizeof(char)*(strlen(str)));
       if (escreve < 0) {
-        write(STDERR_FILENO, "Error writing in file\n", 22);
+        fprintf(stderr, "Error writing in file\n");
         exit(EXIT_FAILURE);
       }
       //printf("%u", *seat);
@@ -187,7 +187,7 @@ int ems_show(int fd, unsigned int event_id) {
         //printf(" ");
         escreve = write(fd," ",sizeof(char));
         if (escreve < 0) {
-          write(STDERR_FILENO, "Error writing in file\n", 22);
+          fprintf(stderr, "Error writing in file\n");
           exit(EXIT_FAILURE);
         }
       }
@@ -195,7 +195,7 @@ int ems_show(int fd, unsigned int event_id) {
     } 
     long int escreve = write(fd,"\n",sizeof(char));
     if (escreve < 0) {
-      write(STDERR_FILENO, "Error writing in file\n", 22);
+      fprintf(stderr, "Error writing in file\n");
       exit(EXIT_FAILURE);
     }
     //printf("\n");
@@ -204,24 +204,46 @@ int ems_show(int fd, unsigned int event_id) {
   return 0;
 }
 
-int ems_list_events() {
+int ems_list_events(int fd) {
   if (event_list == NULL) {
     fprintf(stderr, "EMS state must be initialized\n");
     return 1;
   }
 
   if (event_list->head == NULL) {
-    printf("No events\n");
+    long int escreve = write(fd,"No events\n",sizeof(char)*10);
+    if (escreve < 0) {
+      fprintf(stderr, "Error writing in file\n");
+      exit(EXIT_FAILURE);
+    }
     return 0;
   }
 
   struct ListNode* current = event_list->head;
   while (current != NULL) {
-    printf("Event: ");
-    printf("%u\n", (current->event)->id);
+    //printf("Event: ");
+    long int escreve = write(fd,"Event: ",sizeof(char)*7);
+    if (escreve < 0) {
+      fprintf(stderr, "Error writing in file\n");
+      exit(EXIT_FAILURE);
+    }
+    char *str = (char*) malloc(sizeof(char)*16);
+    sprintf(str,"%d",(current->event)->id);
+    escreve = write(fd, str ,sizeof(char)*(strlen(str)));
+    if (escreve < 0) {
+      fprintf(stderr, "Error writing in file\n");
+      exit(EXIT_FAILURE);
+    }
+    escreve = write(fd,"\n",sizeof(char));
+    if (escreve < 0) {
+      fprintf(stderr, "Error writing in file\n");
+      exit(EXIT_FAILURE);
+    }
+    //printf("%u\n", (current->event)->id);
+    free(str);
     current = current->next;
   }
-
+  
   return 0;
 }
 

@@ -38,6 +38,7 @@ void* thread(void* arg){
         //pthread_mutex_lock(&lock);
         pthread_mutex_lock(&file_lock);
         valores->command = get_next(valores->file);
+        //printf("comando : %d\n", comando);
         //printf("Create : %d\n", valores->command);
         //barrier_wait(0);
         
@@ -70,10 +71,11 @@ void* thread(void* arg){
                 //return NULL;
             }
             //pthread_mutex_unlock(&lock);
-            pthread_mutex_unlock(&file_lock);
+            //pthread_mutex_unlock(&file_lock);
             if (ems_reserve(event_id, num_coords, xs,ys)) {
                 fprintf(stderr, "Failed to reserve seats\n");
             }
+            pthread_mutex_unlock(&file_lock);
             break;
         case CMD_SHOW:
             if (parse_show(valores->file, &event_id) != 0) {
@@ -90,7 +92,7 @@ void* thread(void* arg){
             break;
         /*ISTO PROVAVELMENTE TAMBEM VAI PARA DENTRO DO FICHEIRO*/
         case CMD_LIST_EVENTS:
-            if (ems_list_events()) {
+            if (ems_list_events(valores->file_out)) {
                 fprintf(stderr, "Failed to list events\n");
             }
             pthread_mutex_unlock(&file_lock);
@@ -137,7 +139,10 @@ void* thread(void* arg){
           break;
         case EOC:
             //pthread_mutex_lock(&lock);
-            if (comando == EOC) return NULL;
+            if (comando == EOC){
+                pthread_mutex_unlock(&file_lock);
+                return NULL;
+            } 
             comando = EOC;
             /*barrier = 1;
             barrier_wait(1);*/
@@ -158,7 +163,7 @@ void read_files(char* path, char* name, int max_threads){
     pthread_t thread_id[max_threads];
     int file = open_file_read(path, name);
     int file_out = open_file_out(path, name);
-    data valores[max_threads];
+    data valores[max_threads]; 
     /*if (pthread_mutex_init(&lock, NULL) != 0) {
        fprintf(stderr, "Failed to create lock\n");
         exit(EXIT_FAILURE);
