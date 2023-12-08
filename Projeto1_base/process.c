@@ -44,9 +44,10 @@ void* thread(void* arg){
        fprintf(stderr, "Failed to initialize the lock\n");
        exit(EXIT_FAILURE);
     }*///Ba 12 22 2 2 
+    printf("comando : %d\n", comando);
     while (comando != EOC){
         //printf("valores->command:%d\n",valores->command);
-        pthread_mutex_lock(&lock);
+        //pthread_mutex_lock(&lock);
         pthread_mutex_lock(&file_lock);
         valores->command = get_next(valores->file);
         printf("Create : %d\n", valores->command);
@@ -61,7 +62,7 @@ void* thread(void* arg){
                 //free(arg);
                 return NULL;
             }
-            pthread_mutex_unlock(&lock);
+            //pthread_mutex_unlock(&lock);
             pthread_mutex_unlock(&file_lock);
             if (ems_create(event_id, num_rows, num_columns)) {
                 fprintf(stderr, "Failed to create event\n");
@@ -77,7 +78,7 @@ void* thread(void* arg){
                 //free(arg);
                 return NULL;
             }
-            pthread_mutex_unlock(&lock);
+            //pthread_mutex_unlock(&lock);
             pthread_mutex_unlock(&file_lock);
             if (ems_reserve(event_id, num_coords, xs,ys)) {
                 fprintf(stderr, "Failed to reserve seats\n");
@@ -89,18 +90,18 @@ void* thread(void* arg){
                 //free(arg);
                 return NULL;
             }
-            pthread_mutex_unlock(&lock);
-            pthread_mutex_unlock(&file_lock);
             if (ems_show(valores->file_out, event_id)) {
                 fprintf(stderr, "Failed to show event\n");
             }
+            //pthread_mutex_unlock(&lock);
+            pthread_mutex_unlock(&file_lock);
             break;
-        
         /*ISTO PROVAVELMENTE TAMBEM VAI PARA DENTRO DO FICHEIRO*/
         case CMD_LIST_EVENTS:
             if (ems_list_events()) {
                 fprintf(stderr, "Failed to list events\n");
             }
+            pthread_mutex_unlock(&file_lock);
             break;
         case CMD_WAIT:
             //pid_t thread_id = gettid();
@@ -110,7 +111,7 @@ void* thread(void* arg){
                 //free(arg);
                 return NULL;
             }
-            pthread_mutex_unlock(&lock);
+            //pthread_mutex_unlock(&lock);
             pthread_mutex_unlock(&file_lock);
             /*ISTO PROVAVELMENTE TAMBEM VAI PARA DENTRO DO FICHEIRO*/
             if (delay > 0) {
@@ -120,6 +121,7 @@ void* thread(void* arg){
             break;
         case CMD_INVALID:
             fprintf(stderr, "Invalid command. See HELP for usage\n");
+            pthread_mutex_unlock(&file_lock);
             break;
         case CMD_HELP:
             printf(
@@ -131,11 +133,15 @@ void* thread(void* arg){
                 "  WAIT <delay_ms> [thread_id]\n"  // thread_id is not implemented
                 "  BARRIER\n"                      // Not implemented
                 "  HELP\n");
+            pthread_mutex_unlock(&file_lock);
             break;
         case CMD_BARRIER:
             barrier = 1;  // Not implemented
             barrier_wait(1);
+            pthread_mutex_unlock(&file_lock);
+            break;
         case CMD_EMPTY:
+            pthread_mutex_unlock(&file_lock);
           break;
         case EOC:
             //pthread_mutex_lock(&lock);
@@ -145,22 +151,22 @@ void* thread(void* arg){
             /*barrier = 1;
             barrier_wait(1);*/
             ems_terminate();
-            if (close(valores->file) == 1){
+            /*if (close(valores->file) == 1){
                 write(STDERR_FILENO, "Error closing file\n", 20);
                 exit(EXIT_FAILURE);
             }
             if (close(valores->file_out) == 1){
                 write(STDERR_FILENO, "Error closing file\n", 20);
                 exit(EXIT_FAILURE);
-            }
-            pthread_mutex_unlock(&lock);
+            }*/
+            //pthread_mutex_unlock(&lock);
             pthread_mutex_unlock(&file_lock);
             return NULL;
         }
         active_threads--;
         //free(arg);
-        pthread_mutex_unlock(&lock);
-        pthread_mutex_unlock(&file_lock);
+        //pthread_mutex_unlock(&lock);
+        
     }
     
     return NULL;
@@ -171,10 +177,10 @@ void read_files(char* path, char* name, int max_threads){
     int file = open_file_read(path, name);
     int file_out = open_file_out(path, name);
     data valores[max_threads];
-    if (pthread_mutex_init(&lock, NULL) != 0) {
+    /*if (pthread_mutex_init(&lock, NULL) != 0) {
        fprintf(stderr, "Failed to create lock\n");
         exit(EXIT_FAILURE);
-    }
+    }*/
     for (int i = 0; i < max_threads; i++){ 
         valores[i].file = file;
         valores[i].file_out = file_out;
@@ -189,6 +195,14 @@ void read_files(char* path, char* name, int max_threads){
             fprintf(stderr, "Failed to join thread\n");
             exit(EXIT_FAILURE);
         }
+    }
+    if (close(file) == 1){
+        write(STDERR_FILENO, "Error closing file\n", 20);
+        exit(EXIT_FAILURE);
+    }
+    if (close(file_out) == 1){
+        write(STDERR_FILENO, "Error closing file\n", 20);
+        exit(EXIT_FAILURE);
     }
     //printf("paragem:%d\n",paragem);
     //fflush(stdout);
