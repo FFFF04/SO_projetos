@@ -13,10 +13,12 @@
 #include "parser.h"
 #include "process.h"
 
+
 pthread_mutex_t lock;
 int comando;
 int barrier = 0; //0 nao ha barrier 1 ha barrier
 int active_threads = 0;
+pthread_mutex_t file_lock = PTHREAD_MUTEX_INITIALIZER;
 
 void barrier_wait(int i){
     while (1){
@@ -41,13 +43,14 @@ void* thread(void* arg){
     /*if (pthread_mutex_init(&lock, NULL) != 0) {
        fprintf(stderr, "Failed to initialize the lock\n");
        exit(EXIT_FAILURE);
-    }*/
-    while ((valores->command = get_next(valores->file)) >= 0 && comando != EOC)
-    {
+    }*///Ba 12 22 2 2 
+    while (comando != EOC){
         //printf("valores->command:%d\n",valores->command);
+        pthread_mutex_lock(&lock);
+        pthread_mutex_lock(&file_lock);
+        valores->command = get_next(valores->file);
         printf("Create : %d\n", valores->command);
-       
-        barrier_wait(0);
+        //barrier_wait(0);
         
         active_threads++;
         switch (valores->command) {
@@ -58,6 +61,8 @@ void* thread(void* arg){
                 //free(arg);
                 return NULL;
             }
+            pthread_mutex_unlock(&lock);
+            pthread_mutex_unlock(&file_lock);
             if (ems_create(event_id, num_rows, num_columns)) {
                 fprintf(stderr, "Failed to create event\n");
             }
@@ -72,6 +77,8 @@ void* thread(void* arg){
                 //free(arg);
                 return NULL;
             }
+            pthread_mutex_unlock(&lock);
+            pthread_mutex_unlock(&file_lock);
             if (ems_reserve(event_id, num_coords, xs,ys)) {
                 fprintf(stderr, "Failed to reserve seats\n");
             }
@@ -82,6 +89,8 @@ void* thread(void* arg){
                 //free(arg);
                 return NULL;
             }
+            pthread_mutex_unlock(&lock);
+            pthread_mutex_unlock(&file_lock);
             if (ems_show(valores->file_out, event_id)) {
                 fprintf(stderr, "Failed to show event\n");
             }
@@ -95,11 +104,14 @@ void* thread(void* arg){
             break;
         case CMD_WAIT:
             //pid_t thread_id = gettid();
-            if (parse_wait(valores->file, &delay, NULL/*&thread_id*/) == -1) {  // thread_id is not implemented
+            //int *thread_id;
+            if (parse_wait(valores->file, &delay, NULL) == -1) {  // thread_id is not implemented
                 fprintf(stderr, "Invalid command. See HELP for usage\n");
                 //free(arg);
                 return NULL;
             }
+            pthread_mutex_unlock(&lock);
+            pthread_mutex_unlock(&file_lock);
             /*ISTO PROVAVELMENTE TAMBEM VAI PARA DENTRO DO FICHEIRO*/
             if (delay > 0) {
                 printf("Waiting...\n");
@@ -130,8 +142,8 @@ void* thread(void* arg){
             if (comando == EOC) return NULL;
             
             comando = EOC;
-            barrier = 1;
-            barrier_wait(1);
+            /*barrier = 1;
+            barrier_wait(1);*/
             ems_terminate();
             if (close(valores->file) == 1){
                 write(STDERR_FILENO, "Error closing file\n", 20);
@@ -141,12 +153,14 @@ void* thread(void* arg){
                 write(STDERR_FILENO, "Error closing file\n", 20);
                 exit(EXIT_FAILURE);
             }
-            //pthread_mutex_unlock(&lock);
+            pthread_mutex_unlock(&lock);
+            pthread_mutex_unlock(&file_lock);
             return NULL;
         }
         active_threads--;
-        //pthread_mutex_unlock(&lock);
         //free(arg);
+        pthread_mutex_unlock(&lock);
+        pthread_mutex_unlock(&file_lock);
     }
     
     return NULL;
@@ -157,6 +171,10 @@ void read_files(char* path, char* name, int max_threads){
     int file = open_file_read(path, name);
     int file_out = open_file_out(path, name);
     data valores[max_threads];
+    if (pthread_mutex_init(&lock, NULL) != 0) {
+       fprintf(stderr, "Failed to create lock\n");
+        exit(EXIT_FAILURE);
+    }
     for (int i = 0; i < max_threads; i++){ 
         valores[i].file = file;
         valores[i].file_out = file_out;
