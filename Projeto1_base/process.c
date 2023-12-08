@@ -18,10 +18,10 @@ int comando;
 int barrier = 0; //0 nao ha barrier 1 ha barrier
 int active_threads = 0;
 
-void barrier_wait(){
+void barrier_wait(int i){
     while (1){
         if (barrier == 0) break;
-        if (barrier == 1 && active_threads == 0) barrier = 0;
+        if (barrier == 1 && active_threads == i) barrier = 0;
     }    
 }
 
@@ -47,12 +47,12 @@ void* thread(void* arg){
         //printf("valores->command:%d\n",valores->command);
         printf("Create : %d\n", valores->command);
        
-        barrier_wait();
+        barrier_wait(0);
         
         active_threads++;
         switch (valores->command) {
         case CMD_CREATE:
-            barrier = 1;
+            //barrier = 1;
             if (parse_create(valores->file, &event_id, &num_rows, &num_columns) != 0) {
                 fprintf(stderr, "Invalid command. See HELP for usage\n");
                 //free(arg);
@@ -122,14 +122,16 @@ void* thread(void* arg){
             break;
         case CMD_BARRIER:
             barrier = 1;  // Not implemented
-            barrier_wait();
+            barrier_wait(1);
         case CMD_EMPTY:
           break;
         case EOC:
-            pthread_mutex_lock(&lock);
+            //pthread_mutex_lock(&lock);
             if (comando == EOC) return NULL;
             
             comando = EOC;
+            barrier = 1;
+            barrier_wait(1);
             ems_terminate();
             if (close(valores->file) == 1){
                 write(STDERR_FILENO, "Error closing file\n", 20);
@@ -139,7 +141,7 @@ void* thread(void* arg){
                 write(STDERR_FILENO, "Error closing file\n", 20);
                 exit(EXIT_FAILURE);
             }
-            pthread_mutex_unlock(&lock);
+            //pthread_mutex_unlock(&lock);
             return NULL;
         }
         active_threads--;
@@ -149,57 +151,6 @@ void* thread(void* arg){
     
     return NULL;
 }
-
-/*void* thread_mom(void* arg){
-    data *values = (data*) arg;
-    int number_threads = 0;
-    int i = 0;
-    int k = 0;
-    data valores[values->max_threads];
-    pthread_t thread_id[values->max_threads];////alterar indice que controla
-    while (1){
-      //printf("%d\n",comando);
-      //pthread_t thread_id[i];
-      //void* return_value;
-        //printf("%d\n",comando);
-        if(number_threads >= values->max_threads){ //(i%max_threads)
-            k = (k + 1)%values->max_threads;//indice que controla indice da primeira thread criada ainda ativa (//if(i==k)tinha acho desnecessario)
-            //printf("indice join%d\n", i);
-            if (pthread_join(thread_id[i], NULL) != 0){
-                fprintf(stderr, "Failed to join1 thread\n");
-                exit(EXIT_FAILURE);
-            }
-            number_threads--;
-        }
-        //valores->command = comando;
-        valores[i].file = values->file;
-        valores[i].file_out = values->file_out;
-        //valores[i].command = get_next(values->file);
-        if (comando == EOC) break;
-        if (pthread_create(&thread_id[i], NULL, &thread, &valores[i]) != 0){
-            fprintf(stderr, "Failed to create thread\n");
-            exit(EXIT_FAILURE);
-        }
-        //printf("indice create%d %d\n", i, k);
-        //int* comando = (int*)return_value;
-        if (comando == EOC) break;
-        //FILHO DE PAIS MATEMATICOS
-        number_threads++; //max=3 (0,1,2)3
-        i = (i + 1)%values->max_threads;
-        //free(comando);
-        //free(valores);
-    }
-    while(number_threads > 0){
-        //printf("indice join 2_%d\n", k);
-        if (pthread_join(thread_id[k], NULL) != 0){
-            fprintf(stderr, "Failed to join2 thread\n");
-            exit(EXIT_FAILURE);
-        }
-        k = (k + 1)%values->max_threads;
-        number_threads--;
-    }
-    return NULL;
-}*/
 
 void read_files(char* path, char* name, int max_threads){
     pthread_t thread_id[max_threads];
@@ -284,3 +235,54 @@ void read_files(char* path, char* name, int max_threads){
         if (comando == EOC) break;
     
     */
+
+/*void* thread_mom(void* arg){
+    data *values = (data*) arg;
+    int number_threads = 0;
+    int i = 0;
+    int k = 0;
+    data valores[values->max_threads];
+    pthread_t thread_id[values->max_threads];////alterar indice que controla
+    while (1){
+      //printf("%d\n",comando);
+      //pthread_t thread_id[i];
+      //void* return_value;
+        //printf("%d\n",comando);
+        if(number_threads >= values->max_threads){ //(i%max_threads)
+            k = (k + 1)%values->max_threads;//indice que controla indice da primeira thread criada ainda ativa (//if(i==k)tinha acho desnecessario)
+            //printf("indice join%d\n", i);
+            if (pthread_join(thread_id[i], NULL) != 0){
+                fprintf(stderr, "Failed to join1 thread\n");
+                exit(EXIT_FAILURE);
+            }
+            number_threads--;
+        }
+        //valores->command = comando;
+        valores[i].file = values->file;
+        valores[i].file_out = values->file_out;
+        //valores[i].command = get_next(values->file);
+        if (comando == EOC) break;
+        if (pthread_create(&thread_id[i], NULL, &thread, &valores[i]) != 0){
+            fprintf(stderr, "Failed to create thread\n");
+            exit(EXIT_FAILURE);
+        }
+        //printf("indice create%d %d\n", i, k);
+        //int* comando = (int*)return_value;
+        if (comando == EOC) break;
+        //FILHO DE PAIS MATEMATICOS
+        number_threads++; //max=3 (0,1,2)3
+        i = (i + 1)%values->max_threads;
+        //free(comando);
+        //free(valores);
+    }
+    while(number_threads > 0){
+        //printf("indice join 2_%d\n", k);
+        if (pthread_join(thread_id[k], NULL) != 0){
+            fprintf(stderr, "Failed to join2 thread\n");
+            exit(EXIT_FAILURE);
+        }
+        k = (k + 1)%values->max_threads;
+        number_threads--;
+    }
+    return NULL;
+}*/
