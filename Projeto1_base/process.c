@@ -14,35 +14,47 @@
 #include "process.h"
 
 
-pthread_mutex_t lock;
+//pthread_mutex_t lock;
 int comando;
 int barrier = 0; //0 nao ha barrier 1 ha barrier
 int active_threads = 0;
+unsigned int number_threads = 0;
+int n_waiting = 0;
+unsigned int thread_ids[100];
+unsigned int waiting_list[100];
 pthread_mutex_t file_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_rwlock_t read_file_lock = PTHREAD_RWLOCK_INITIALIZER;
 
-void barrier_wait(int i){
-    while (1){
-        if (barrier == 0) break;
-        if (barrier == 1 && active_threads == i) barrier = 0;
-    }    
+int confirma_wait(){
+    for (int i = 0; i < n_waiting; i++){
+        if(number_threads == thread_ids[i])
+            return 1;
+    }
+    return 0;
 }
-
 
 void* thread(void* arg){
     data *valores = (data*) arg;
-    unsigned int event_id, delay;
+    unsigned int event_id, delay ,thread_id;
     size_t num_rows, num_columns, num_coords;
     size_t xs[MAX_RESERVATION_SIZE], ys[MAX_RESERVATION_SIZE];
     while (comando != EOC){
-        //printf("valores->command:%d\n",valores->command);
-        //pthread_mutex_lock(&lock);
         pthread_mutex_lock(&file_lock);
+        if (barrier == 1){
+            pthread_mutex_unlock(&file_lock);
+            break;
+        } 
+        number_threads++;
+        if(confirma_wait()){
+            printf("Waiting...\n");
+            ems_wait(delay);
+        }
         valores->command = get_next(valores->file);
         //printf("comando : %d\n", comando);
         //printf("Create : %d\n", valores->command);
         //barrier_wait(0);
-        
         active_threads++;
+        
         switch (valores->command) {
         case CMD_CREATE:
             //barrier = 1;
@@ -99,19 +111,24 @@ void* thread(void* arg){
             break;
         case CMD_WAIT:
             //pid_t thread_id = gettid();
-            //int *thread_id;
-            if (parse_wait(valores->file, &delay, NULL) == -1) {  // thread_id is not implemented
+            if (parse_wait(valores->file, &delay, /*NULL*/&thread_id) == -1) {  // thread_id is not implemented
                 fprintf(stderr, "Invalid command. See HELP for usage\n");
                 pthread_mutex_unlock(&file_lock);
                 return NULL;
             }
             //pthread_mutex_unlock(&lock);
             pthread_mutex_unlock(&file_lock);
+            if(thread_id > 0 && delay > 0){
+                waiting_list[n_waiting] = delay;
+                thread_ids[n_waiting++] = thread_id;
+                break;
+            }
             /*ISTO PROVAVELMENTE TAMBEM VAI PARA DENTRO DO FICHEIRO*/
             if (delay > 0) {
                 printf("Waiting...\n");
                 ems_wait(delay);
             }
+            /*if(thread_id !=NULL){}*/
             break;
         case CMD_INVALID:
             fprintf(stderr, "Invalid command. See HELP for usage\n");
@@ -131,7 +148,6 @@ void* thread(void* arg){
             break;
         case CMD_BARRIER:
             barrier = 1;  // Not implemented
-            barrier_wait(1);
             pthread_mutex_unlock(&file_lock);
             break;
         case CMD_EMPTY:
@@ -168,21 +184,26 @@ void read_files(char* path, char* name, int max_threads){
        fprintf(stderr, "Failed to create lock\n");
         exit(EXIT_FAILURE);
     }*/
-    for (int i = 0; i < max_threads; i++){ 
-        valores[i].file = file;
-        valores[i].file_out = file_out;
-        valores[i].max_threads = max_threads;
-        if (pthread_create(&thread_id[i],NULL,&thread,&valores[i]) != 0){
-            fprintf(stderr, "Failed to create thread\n");
-            exit(EXIT_FAILURE);
+    while (comando != EOC){
+        for (int i = 0; i < max_threads; i++){ 
+            valores[i].file = file;
+            valores[i].file_out = file_out;
+            valores[i].max_threads = max_threads;
+            if (pthread_create(&thread_id[i],NULL,&thread,&valores[i]) != 0){
+                fprintf(stderr, "Failed to create thread\n");
+                exit(EXIT_FAILURE);
+            }
         }
-    }
-    for (int k = 0; k < max_threads; k++){
-        if (pthread_join(thread_id[k],NULL) != 0){
-            fprintf(stderr, "Failed to join thread\n");
-            exit(EXIT_FAILURE);
+        for (int k = 0; k < max_threads; k++){
+            if (pthread_join(thread_id[k],NULL) != 0){
+                fprintf(stderr, "Failed to join thread\n");
+                exit(EXIT_FAILURE);
+            }
         }
+        barrier = 0;
     }
+    
+        
     if (close(file) == 1){
         write(STDERR_FILENO, "Error closing file\n", 20);
         exit(EXIT_FAILURE);

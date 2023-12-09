@@ -12,6 +12,12 @@ typedef struct{
   int max_threads;
 }data;
 
+/*typedef struct waiting_list{
+  int thread_id;
+  int waiting_time;
+  struct waiting_list* next;
+}waiting_list;*/
+
 void read_files(char* path, char* name , int max_threads);
 void* process(void* arg);
 void barrier_wait();
