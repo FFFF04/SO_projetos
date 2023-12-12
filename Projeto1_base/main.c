@@ -25,15 +25,15 @@ int main(int argc, char *argv[]) {
   int max_threads = 0;
   DIR *dirp;
   struct dirent *dp;
-  if (argc < 3){
-    /*DA ERRO */
+  if (argc <= 3){
+    fprintf(stderr, "To few arguments\n");
+    exit(EXIT_FAILURE);
   }
-  
   for (int i = 1; i < argc; i++){
     if(i == 1){
       dirp = opendir(argv[i]);
       if (dirp == NULL) {
-        fprintf(stderr, "EError opening Dirpath\n");
+        fprintf(stderr, "Error opening Dirpath\n");
         exit(EXIT_FAILURE);
       }
       path = argv[i];
