@@ -8,15 +8,14 @@
 typedef struct{
   int file;
   int file_out;
-  int command;
-  int max_threads;
+  int thread_id;
 }data;
 
-/*typedef struct waiting_list{
+typedef struct {
   int thread_id;
-  int waiting_time;
-  struct waiting_list* next;
-}waiting_list;*/
+  int size;
+  unsigned int *waiting_time;
+}waiting_list;
 
 void read_files(char* path, char* name , int max_threads);
 void* process(void* arg);
