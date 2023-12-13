@@ -15,6 +15,7 @@
 
 int comando;
 int barrier = 0; //0 nao ha barrier 1 ha barrier
+int max_Threads;
 waiting_list *wait_list;
 pthread_mutex_t read_file_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t write_file_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -45,7 +46,8 @@ void* thread(void* arg){
                 exit(EXIT_FAILURE);
             }
             ems_wait(wait_list[valores->thread_id].waiting_time[0]);
-            del(wait_list[valores->thread_id].size, wait_list[valores->thread_id].waiting_time);
+            if(wait_list[valores->thread_id].size>1)
+                del(wait_list[valores->thread_id].size, wait_list[valores->thread_id].waiting_time);
             wait_list[valores->thread_id].size--;
         }
         pthread_mutex_lock(&read_file_lock);
@@ -126,13 +128,19 @@ void* thread(void* arg){
                 break;
             }
             if (delay > 0) {
-                /*Falta fazer esta parte*/
-                long int escreve = write(valores->file_out,"Waiting...\n",11);
-                if (escreve < 0) {
-                    fprintf(stderr, "Error writing in file\n");
-                    exit(EXIT_FAILURE);
+                for(int t_id = 1; t_id <= max_Threads; t_id++){
+                    wait_list[t_id].size++;
+                    wait_list[t_id].waiting_time = realloc(wait_list[t_id].waiting_time, 
+                        ((size_t)wait_list[t_id].size)*sizeof(unsigned int));
+                    wait_list[t_id].waiting_time[wait_list[t_id].size - 1] = delay;//exceto a thread onde estou que vai 
                 }
-                ems_wait(delay);
+                /*Falta fazer esta parte*/
+                //long int escreve = write(valores->file_out,"Waiting...\n",11);
+                // if (escreve < 0) {
+                //     fprintf(stderr, "Error writing in file\n");
+                //     exit(EXIT_FAILURE);
+                // }
+                //ems_wait(delay);
             }
             break;
         case CMD_INVALID:
@@ -142,7 +150,7 @@ void* thread(void* arg){
             break;
         case CMD_HELP:
             pthread_mutex_unlock(&read_file_lock);
-            //pthread_mutex_lock(&write_file_lock);
+            pthread_mutex_lock(&write_file_lock);
             long int escreve = write(valores->file_out, "Available commands:\n"
                 "  CREATE <event_id> <num_rows> <num_columns>\n"
                 "  RESERVE <event_id> [(<x1>,<y1>) (<x2>,<y2>) ...]\n"
@@ -151,11 +159,11 @@ void* thread(void* arg){
                 "  WAIT <delay_ms> [thread_id]\n"
                 "  BARRIER\n"
                 "  HELP\n" ,188);
-            //pthread_mutex_unlock(&write_file_lock);
             if (escreve < 0) {
               fprintf(stderr, "Error writing in file\n");
               exit(EXIT_FAILURE);
             }
+            pthread_mutex_unlock(&write_file_lock);
             //pthread_mutex_unlock(&write_file_lock);
             break;
         case CMD_BARRIER:
@@ -189,7 +197,8 @@ void read_files(char* path, char* name, int max_threads){
     int file = open_file_read(path, name);
     int file_out = open_file_out(path, name);
     data valores[max_threads + 1];
-    wait_list = (waiting_list*)malloc((size_t)(max_threads + 3) * sizeof(waiting_list));
+    max_Threads =max_threads;
+    wait_list = (waiting_list*)malloc((size_t)(max_threads + 1) * sizeof(waiting_list));
     int value = 2;
     int *res = &value;
     while (*res != 0){
@@ -205,11 +214,12 @@ void read_files(char* path, char* name, int max_threads){
                 exit(EXIT_FAILURE);
             }
         }
-        for (int k = 1; k < max_threads; k++){
+        for (int k = 1; k <= max_threads; k++){
             if (pthread_join(thread_id[k], (void**) &res) != 0){
                 fprintf(stderr, "Failed to join thread\n");
                 exit(EXIT_FAILURE);
             }
+            //if(sizeof(wait_list[k].waiting_time) > 0)
             free(wait_list[k].waiting_time);
         }
         barrier = 0;
