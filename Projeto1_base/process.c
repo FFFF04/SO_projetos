@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <pthread.h>
+
 #include "files.h"
 #include "constants.h"
 #include "operations.h"
@@ -41,7 +42,7 @@ void* thread(void* arg){
                 fprintf(stderr, "Error writing in file\n");
             }
             ems_wait(wait_list[valores->thread_id].waiting_time[0]);
-            if(wait_list[valores->thread_id].size>1)
+            if(wait_list[valores->thread_id].size > 1)
                 del(wait_list[valores->thread_id].size, wait_list[valores->thread_id].waiting_time);
             wait_list[valores->thread_id].size--;
         }
@@ -50,7 +51,7 @@ void* thread(void* arg){
             return_value = &barrier;
             pthread_mutex_unlock(&read_file_lock);
             break;
-        } 
+        }
         int command = get_next(valores->file);
         //pthread_mutex_lock(&write_file_lock);
         switch (command) {
@@ -121,7 +122,7 @@ void* thread(void* arg){
             if(thread_id > 0 && delay > 0){
                 wait_list[thread_id].size++;
                 wait_list[thread_id].waiting_time = realloc(wait_list[thread_id].waiting_time, 
-                    ((size_t)wait_list[thread_id].size)*sizeof(unsigned int));
+                    ((size_t) wait_list[thread_id].size) * sizeof(unsigned int));
                 wait_list[thread_id].waiting_time[wait_list[thread_id].size - 1] = delay;
                 break;
             }
@@ -129,7 +130,7 @@ void* thread(void* arg){
                 for(int t_id = 1; t_id <= max_Threads; t_id++){
                     wait_list[t_id].size++;
                     wait_list[t_id].waiting_time = realloc(wait_list[t_id].waiting_time, 
-                        ((size_t)wait_list[t_id].size)*sizeof(unsigned int));
+                        ((size_t) wait_list[t_id].size) * sizeof(unsigned int));
                     wait_list[t_id].waiting_time[wait_list[t_id].size - 1] = delay;//exceto a thread onde estou que vai 
                 }
             }
@@ -153,7 +154,6 @@ void* thread(void* arg){
             if (escreve < 0) {
               fprintf(stderr, "Error writing in file\n");
             //   pthread_mutex_unlock(&write_file_lock);
-            //   break;
             }
             pthread_mutex_unlock(&write_file_lock);
             //pthread_mutex_unlock(&write_file_lock);
@@ -190,7 +190,7 @@ void read_files(char* path, char* name, int max_threads){
     int file_out = open_file_out(path, name);
     data valores[max_threads + 1];
     max_Threads = max_threads;
-    wait_list = (waiting_list*)malloc((size_t)(max_threads + 1) * sizeof(waiting_list));
+    wait_list = (waiting_list*) malloc((size_t)(max_threads + 1) * sizeof(waiting_list));
     int value = 2;
     int *res = &value;
     while (*res != 0){
@@ -212,7 +212,6 @@ void read_files(char* path, char* name, int max_threads){
                 fprintf(stderr, "Failed to join thread\n");
                 exit(EXIT_FAILURE);
             }
-            // if(sizeof(wait_list[k].waiting_time) > 0)
             free(wait_list[k].waiting_time);
         }
     }

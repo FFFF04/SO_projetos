@@ -4,19 +4,13 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
-#include <sys/stat.h>
 #include <sys/wait.h>
-#include <sys/types.h>
 #include <dirent.h>
-#include <pthread.h>
 
 #include "constants.h"
 #include "operations.h"
-#include "parser.h"
 #include "files.h"
 #include "process.h"
-
-/*Ainda temos de ver o comando LIST*/
 
 int main(int argc, char *argv[]) {
   unsigned int state_access_delay_ms = STATE_ACCESS_DELAY_MS;
@@ -38,7 +32,6 @@ int main(int argc, char *argv[]) {
       }
       path = argv[i];
     }
-    //PERGUNTAR AO PROF
     if(i == 2){
       char* max_proc_char = argv[i];
       max_proc = atoi(max_proc_char);
@@ -57,7 +50,7 @@ int main(int argc, char *argv[]) {
     }    
     if (i == 4){
       char *endptr;
-      unsigned long int delay = (unsigned int) strtoul(argv[i], &endptr, 10);///verificar e pq 2 delays
+      unsigned long int delay = (unsigned int) strtoul(argv[i], &endptr, 10);
 
       if (*endptr != '\0' || delay > UINT_MAX) {
         fprintf(stderr, "Invalid delay value or value too large\n");
@@ -67,11 +60,7 @@ int main(int argc, char *argv[]) {
       state_access_delay_ms = (unsigned int)delay;
     }
   }
-
   while (1) {
-    /*unsigned int event_id, delay;
-    size_t num_rows, num_columns, num_coords;
-    size_t xs[MAX_RESERVATION_SIZE], ys[MAX_RESERVATION_SIZE];*/
     pid_t pid;
     int processos = 0;
     while ((dp = readdir(dirp)) != NULL){
@@ -82,7 +71,6 @@ int main(int argc, char *argv[]) {
           continue;
         
       if (processos >= max_proc){
-        // Falta por o id? nao nem sei se é
         wait(NULL);
         processos--;
       }
