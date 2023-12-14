@@ -14,19 +14,53 @@
 #include "parser.h"
 #include "process.h"
 
+/*
+PERGUNTAR A PROF:
+
+    TEMOS DE FAZER O TRATAMENTO DOS ERROS DOS LOCKS ?
+    PERGUNTAR SOBRE O 3 LOCK
+*/
+
 int comando;
 int barrier = 0; //0 nao ha barrier 1 ha barrier
 int max_Threads;
 waiting_list *wait_list;
 pthread_mutex_t read_file_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t write_file_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t edit_lock = PTHREAD_MUTEX_INITIALIZER;
 
 void del(int n, unsigned int *arr){
     for (int i = 1; i < n; i++)
         arr[i - 1] = arr[i];
     arr = realloc(arr, (size_t)(n - 1) * sizeof(int));
 }
+void read_mutex_lock(files_t *file){
+  if (pthread_mutex_lock(&file->readFile_lock) != 0){
+    fprintf(stderr, "Error in pthread_mutex_lock()\n");
+    exit(EXIT_FAILURE);
+  }
+}
 
+void read_mutex_unlock(files_t *file){
+  if (pthread_mutex_unlock(&file->readFile_lock) != 0){
+    fprintf(stderr, "Error in pthread_mutex_unlock()\n");
+    exit(EXIT_FAILURE);
+  }
+}
+
+void write_mutex_lock(files_t *file){
+  if (pthread_mutex_lock(&file->writeFile_lock) != 0){
+    fprintf(stderr, "Error in pthread_mutex_lock()\n");
+    exit(EXIT_FAILURE);
+  }
+}
+
+void write_mutex_unlock(files_t *file){
+  if (pthread_mutex_unlock(&file->writeFile_lock) != 0){
+    fprintf(stderr, "Error in pthread_mutex_unlock()\n");
+    exit(EXIT_FAILURE);
+  }
+}
 void* thread(void* arg){
     data *valores = (data*) arg;
     unsigned int event_id, delay ,thread_id;
