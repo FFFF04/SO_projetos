@@ -23,7 +23,6 @@ static struct timespec delay_to_timespec(unsigned int delay_ms) {
 static struct Event* get_event_with_delay(unsigned int event_id) {
   struct timespec delay = delay_to_timespec(state_access_delay_ms);
   nanosleep(&delay, NULL);  // Should not be removed
-
   return get_event(event_list, event_id);
 }
 
@@ -35,7 +34,6 @@ static struct Event* get_event_with_delay(unsigned int event_id) {
 static unsigned int* get_seat_with_delay(struct Event* event, size_t index) {
   struct timespec delay = delay_to_timespec(state_access_delay_ms);
   nanosleep(&delay, NULL);  // Should not be removed
-
   return &event->data[index];
 }
 
@@ -46,7 +44,6 @@ static unsigned int* get_seat_with_delay(struct Event* event, size_t index) {
 /// @param col Column of the seat.
 /// @return Index of the seat.
 static size_t seat_index(struct Event* event, size_t row, size_t col) { return (row - 1) * event->cols + col - 1; }
-
 int ems_init(unsigned int delay_ms) {
   if (event_list != NULL) {
     fprintf(stderr, "EMS state has already been initialized\n");
@@ -110,7 +107,6 @@ int ems_create(unsigned int event_id, size_t num_rows, size_t num_cols) {
     free(event);
     return 1;
   }
-
   return 0;
 }
 
@@ -171,7 +167,6 @@ int ems_show(int fd, unsigned int event_id) {
     fprintf(stderr, "Event not found\n");
     return 1;
   }
-  /*Falta erros*/
   for (size_t i = 1; i <= event->rows; i++) {
     for (size_t j = 1; j <= event->cols; j++) {
       unsigned int* seat = get_seat_with_delay(event, seat_index(event, i, j));
@@ -237,7 +232,6 @@ int ems_list_events(int fd) {
     free(str);
     current = current->next;
   }
-  
   return 0;
 }
 
