@@ -22,7 +22,10 @@ run: ems
 	@./ems
 
 clean:
-	rm -f *.o ems jobs/*.out public/*.out
+	rm -f *.o ems
+
+remove:
+	rm jobs/*.out public/*.out main operations parser
 
 format:
 	@which clang-format >/dev/null 2>&1 || echo "Please install clang-format to run this command"
