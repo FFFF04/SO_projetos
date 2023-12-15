@@ -23,6 +23,7 @@ int size_writing_locks = 0;
 pthread_mutex_t read_file_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t write_file_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t lock_active_threads = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t lock_size_writing_locks = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t lock_comandos = PTHREAD_MUTEX_INITIALIZER;
 
 void del(int n, unsigned int *arr){
@@ -32,7 +33,8 @@ void del(int n, unsigned int *arr){
 }
 
 int find_event_id(unsigned int event_id){
-    for (int i = 0; i < size_writing_locks; i++){
+    for (int i = 0; i < size_writing_locks; i++)
+    {
         if (writing_locks[i].event_id == (int)event_id)
             return i;
     }
@@ -122,12 +124,13 @@ void* thread(void* arg){
     int value;
     return_value = &value;
     while (1){
+        read_lock();
         if (wait_list[valores->thread_id].size != 0){
+            read_unlock();
             ems_wait(wait_list[valores->thread_id].waiting_time[0]);
             del(wait_list[valores->thread_id].size, wait_list[valores->thread_id].waiting_time);
             wait_list[valores->thread_id].size--;
         }
-        read_lock();
         if (barrier == 1){
             return_value = &barrier;
             read_unlock();
@@ -156,11 +159,11 @@ void* thread(void* arg){
             writing_locks[size_writing_locks].event_id = (int)(event_id);
             size_writing_locks++;
             read_unlock();
-            writing_lock(event_id);
+            write_lock();
             if (ems_create(event_id, num_rows, num_columns)) {
                 fprintf(stderr, "Failed to create event\n");
             }
-            writing_unlock(event_id);
+            write_unlock();
             break;
         case CMD_RESERVE:
             num_coords = parse_reserve(valores->file, MAX_RESERVATION_SIZE, &event_id,xs,ys);
@@ -170,11 +173,11 @@ void* thread(void* arg){
                 break;
             }
             read_unlock();
-            writing_lock(event_id);
+            write_lock();
             if (ems_reserve(event_id, num_coords, xs, ys)) {
                 fprintf(stderr, "Failed to reserve seats\n");
             }
-            writing_unlock(event_id);
+            write_unlock();
             break;
         case CMD_SHOW:
             if (parse_show(valores->file, &event_id) != 0) {
