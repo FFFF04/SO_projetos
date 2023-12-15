@@ -22,6 +22,9 @@ locks *writing_locks = NULL;
 int size_writing_locks = 0;
 pthread_mutex_t read_file_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t write_file_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t lock_active_threads = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t lock_size_writing_locks = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t lock_comandos = PTHREAD_MUTEX_INITIALIZER;
 
 void del(int n, unsigned int *arr){
     for (int i = 1; i < n; i++)
@@ -38,6 +41,33 @@ int find_event_id(unsigned int event_id){
     return -1;
 }
 
+void lock_comando(){
+    if (pthread_mutex_lock(&lock_comandos) != 0){
+        fprintf(stderr, "Error in pthread_mutex_lock()\n");
+        exit(EXIT_FAILURE);
+    }
+}
+
+void unlock_comando(){
+    if (pthread_mutex_unlock(&lock_comandos)!=0){
+        fprintf(stderr, "Error in pthread_mutex_unlock()\n");
+        exit(EXIT_FAILURE);
+    }
+}
+
+void lock_active(){
+    if (pthread_mutex_lock(&lock_active_threads) != 0){
+        fprintf(stderr, "Error in pthread_mutex_lock()\n");
+        exit(EXIT_FAILURE);
+    }
+}
+
+void unlock_active(){
+    if (pthread_mutex_unlock(&lock_active_threads)!=0){
+        fprintf(stderr, "Error in pthread_mutex_unlock()\n");
+        exit(EXIT_FAILURE);
+    }
+}
 void read_lock(){
     if (pthread_mutex_lock(&read_file_lock) != 0){
         fprintf(stderr, "Error in pthread_mutex_lock()\n");
@@ -93,7 +123,7 @@ void* thread(void* arg){
     int *return_value;
     int value;
     return_value = &value;
-    while (comando != EOC){
+    while (1){
         read_lock();
         if (wait_list[valores->thread_id].size != 0){
             read_unlock();
@@ -109,15 +139,18 @@ void* thread(void* arg){
         }
         int command = get_next(valores->file);
         if(command != EOC){
+            lock_active();
             active_threads++;
+            unlock_active();
         }
+        
         switch (command) {
         case CMD_CREATE:
             if (parse_create(valores->file, &event_id, &num_rows, &num_columns) != 0){
                 fprintf(stderr, "Invalid command. See HELP for usage\n");
                 read_unlock();
                 break;
-            }
+            }          
             writing_locks = (locks*) realloc(writing_locks,
             ((size_t)(size_writing_locks + 1)) *sizeof(locks));
             if(pthread_mutex_init(&writing_locks[size_writing_locks].write_file_lock,NULL) != 0){
@@ -126,13 +159,12 @@ void* thread(void* arg){
             }
             writing_locks[size_writing_locks].event_id = (int)(event_id);
             size_writing_locks++;
-            
             read_unlock();
-            writing_lock(event_id);
+            write_lock();
             if (ems_create(event_id, num_rows, num_columns)) {
                 fprintf(stderr, "Failed to create event\n");
             }
-            writing_unlock(event_id);
+            write_unlock();
             break;
         case CMD_RESERVE:
             num_coords = parse_reserve(valores->file, MAX_RESERVATION_SIZE, &event_id,xs,ys);
@@ -142,11 +174,12 @@ void* thread(void* arg){
                 break;
             }
             read_unlock();
-            writing_lock(event_id);
+            write_lock();
+            
             if (ems_reserve(event_id, num_coords, xs, ys)) {
                 fprintf(stderr, "Failed to reserve seats\n");
             }
-            writing_unlock(event_id);
+            write_unlock();
             break;
         case CMD_SHOW:
             if (parse_show(valores->file, &event_id) != 0) {
@@ -165,7 +198,6 @@ void* thread(void* arg){
             break;
         case CMD_LIST_EVENTS:
             read_unlock();
-
             write_lock();
             writing_lock(event_id);
             if (ems_list_events(valores->file_out)) {
@@ -229,18 +261,33 @@ void* thread(void* arg){
             read_unlock();
           break;
         case EOC:
+            lock_comando();
             if (comando == EOC){
+                unlock_comando();
                 read_unlock();
                 return (void*) return_value;
             }
+            unlock_comando();
+            lock_comando();
             comando = EOC;
+            unlock_comando();
             read_unlock();
-            
-            while(active_threads > 0){}
+            while(1){
+                lock_active();
+                if (active_threads >= 0) {
+                    unlock_active();
+                    break;
+                }
+                unlock_active();
+            }
+            write_lock();
             ems_terminate();
+            write_unlock();
             return (void*) return_value;
         }
+        lock_active();
         active_threads--;
+        unlock_active();
     }
     return (void*) return_value;
 }
@@ -260,12 +307,14 @@ void read_files(char* path, char* name, int max_threads){
         barrier = 0;
         active_threads = 0;
         for (int i = 1; i <= max_threads; i++){
+            lock_comando();
             valores[i].file = file;
             valores[i].file_out = file_out;
             valores[i].thread_id = i;
             wait_list[i].thread_id = i;
             wait_list[i].size = 0;
             wait_list[i].waiting_time = NULL;
+            unlock_comando();
         }
         for (int i = 1; i <= max_threads; i++){
             if (pthread_create(&thread_id[i], NULL, &thread, &valores[i]) != 0){

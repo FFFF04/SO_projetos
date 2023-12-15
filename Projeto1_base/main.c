@@ -17,6 +17,7 @@ int main(int argc, char *argv[]) {
   char *path = "";
   int max_proc = 0;
   int max_threads = 0;
+  int estado;
   DIR *dirp;
   struct dirent *dp;
   if (argc <= 3){
@@ -71,7 +72,8 @@ int main(int argc, char *argv[]) {
           continue;
         
       if (processos >= max_proc){
-        wait(NULL);
+        int processo = wait(&estado);
+        printf("O processo %d terminou com estado:%d\n", processo, estado);
         processos--;
       }
       pid = fork();
@@ -84,7 +86,6 @@ int main(int argc, char *argv[]) {
           fprintf(stderr, "Failed to initialize EMS\n");
           return 1;
         }
-        printf("%d\n",getpid());
         read_files(path,dp->d_name,max_threads);
         exit(EXIT_SUCCESS);
       }
@@ -95,7 +96,7 @@ int main(int argc, char *argv[]) {
     }
     break;
   }
-  wait(NULL);
+  wait(&estado);
   closedir(dirp);
   return 0;
 }

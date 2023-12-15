@@ -25,6 +25,10 @@ typedef struct {
 
 void del(int n, unsigned int *arr);
 int find_event_id(unsigned int event_id);
+void lock_comando();
+void unlock_comando();
+void lock_active();
+void unlock_active();
 void read_lock();
 void read_unlock();
 void write_lock();
