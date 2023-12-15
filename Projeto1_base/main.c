@@ -72,8 +72,8 @@ int main(int argc, char *argv[]) {
           continue;
         
       if (processos >= max_proc){
-        int processo = wait(&estado);
-        printf("O processo %d terminou com estado:%d\n", processo, estado);
+        wait(&estado);
+        
         processos--;
       }
       pid = fork();
@@ -87,6 +87,7 @@ int main(int argc, char *argv[]) {
           return 1;
         }
         read_files(path,dp->d_name,max_threads);
+        printf("O processo %d terminou com estado:%d\n", getpid(), EXIT_SUCCESS);
         exit(EXIT_SUCCESS);
       }
       else{
