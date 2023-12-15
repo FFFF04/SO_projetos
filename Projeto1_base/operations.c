@@ -182,9 +182,7 @@ int ems_show(int fd, unsigned int event_id) {
         fprintf(stderr, "Error writing in file\n");
         exit(EXIT_FAILURE);
       }
-      //printf("%u", *seat);
       if (j < event->cols) {
-        //printf(" ");
         escreve = write(fd," ",sizeof(char));
         if (escreve < 0) {
           fprintf(stderr, "Error writing in file\n");
@@ -198,7 +196,6 @@ int ems_show(int fd, unsigned int event_id) {
       fprintf(stderr, "Error writing in file\n");
       exit(EXIT_FAILURE);
     }
-    //printf("\n");
   }
 
   return 0;
@@ -221,7 +218,6 @@ int ems_list_events(int fd) {
 
   struct ListNode* current = event_list->head;
   while (current != NULL) {
-    //printf("Event: ");
     long int escreve = write(fd,"Event: ",sizeof(char)*7);
     if (escreve < 0) {
       fprintf(stderr, "Error writing in file\n");
@@ -239,7 +235,6 @@ int ems_list_events(int fd) {
       fprintf(stderr, "Error writing in file\n");
       exit(EXIT_FAILURE);
     }
-    //printf("%u\n", (current->event)->id);
     free(str);
     current = current->next;
   }
