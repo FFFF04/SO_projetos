@@ -197,7 +197,6 @@ int ems_show(int fd, unsigned int event_id) {
       exit(EXIT_FAILURE);
     }
   }
-
   return 0;
 }
 
