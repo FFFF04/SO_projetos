@@ -174,8 +174,12 @@ int ems_reserve(unsigned int event_id, size_t num_seats, size_t* xs, size_t* ys)
 }
 
 int ems_show(int out_fd, unsigned int event_id) {
+  ssize_t escreve;
   if (event_list == NULL) {
     fprintf(stderr, "EMS state must be initialized\n");
+    escreve = write(out_fd,"1\n",2);
+    if (escreve < 0)
+      fprintf(stderr, "Error writing in pipe\n");
     return 1;
   }
 
@@ -190,6 +194,9 @@ int ems_show(int out_fd, unsigned int event_id) {
 
   if (event == NULL) {
     fprintf(stderr, "Event not found\n");
+    escreve = write(out_fd,"1\n",2);
+    if (escreve < 0)
+      fprintf(stderr, "Error writing in pipe\n");
     return 1;
   }
 
@@ -198,6 +205,11 @@ int ems_show(int out_fd, unsigned int event_id) {
     return 1;
   }
 
+  escreve = write(out_fd,"0\n",2);
+  if (escreve < 0) {
+    fprintf(stderr, "Error writing in pipe\n");
+    exit(EXIT_FAILURE);
+  }
   for (size_t i = 1; i <= event->rows; i++) {
     for (size_t j = 1; j <= event->cols; j++) {
       char buffer[16];
@@ -230,14 +242,24 @@ int ems_show(int out_fd, unsigned int event_id) {
 }
 
 int ems_list_events(int out_fd) {
+  ssize_t escreve;
   if (event_list == NULL) {
     fprintf(stderr, "EMS state must be initialized\n");
+    escreve = write(out_fd,"1\n",2);
+    if (escreve < 0)
+      fprintf(stderr, "Error writing in pipe\n");
     return 1;
   }
 
   if (pthread_rwlock_rdlock(&event_list->rwl) != 0) {
     fprintf(stderr, "Error locking list rwl\n");
     return 1;
+  }
+  
+  escreve = write(out_fd,"0\n",2);
+  if (escreve < 0) {
+    fprintf(stderr, "Error writing in pipe\n");
+    exit(EXIT_FAILURE);
   }
 
   struct ListNode* to = event_list->tail;

@@ -12,6 +12,7 @@
 #include "common/constants.h"
 #include "common/io.h"
 #include "operations.h"
+
 #define TAMMSG 1000
 
 void *threadfunction(int op, char *req_pipe_name, char *resp_pipe_name){
@@ -27,16 +28,15 @@ void *threadfunction(int op, char *req_pipe_name, char *resp_pipe_name){
   }
   
   if(op == 1){
-    int session_id = 0;
-    char *str = (char*) malloc(sizeof(char)*16);
-    sprintf(str,"%u",session_id);
-    ssize_t ret = write(fresp, str, sizeof(str));
+    unsigned int session_id = 0;
+    char buffer[16];
+    sprintf(buffer, "%u", session_id);
+    ssize_t ret = write(fresp, buffer, sizeof(buffer));
     if (ret < 0) {
       fprintf(stderr, "Write failed\n");
       exit(EXIT_FAILURE);
     }
     op = 0;
-    free(str);
   }
 
   while (1){
@@ -52,8 +52,7 @@ void *threadfunction(int op, char *req_pipe_name, char *resp_pipe_name){
     int code_number = atoi(strtok(buffer, " "));
     buffer[ret] = 0;
     unsigned int event_id;
-    long int escreve;
-    int fclient;
+    ssize_t escreve;
     switch (code_number) {
       case 2:
         ems_terminate();
@@ -84,6 +83,7 @@ void *threadfunction(int op, char *req_pipe_name, char *resp_pipe_name){
           escreve = write(fresp,"1\n",2);
         else
           escreve = write(fresp,"0\n",2);
+        
         if (escreve < 0) {
           fprintf(stderr, "Error writing in pipe\n");
           exit(EXIT_FAILURE);
@@ -92,61 +92,11 @@ void *threadfunction(int op, char *req_pipe_name, char *resp_pipe_name){
         break;
       case 5:
         event_id = (unsigned int)(atoi(strtok(NULL, " ")));
-        escreve = write(fresp,"0\n",2);
-        if (escreve < 0) {
-          fprintf(stderr, "Error writing in pipe\n");
-          exit(EXIT_FAILURE);
-        }
-        if(ems_show(fresp, event_id)){
-          unlink(resp_pipe_name);
-          if (unlink(resp_pipe_name) != 0 && errno != ENOENT) {
-            fprintf(stderr, "unlink failed\n");
-            exit(EXIT_FAILURE);
-          }
-          if (mkfifo(resp_pipe_name, 0777) < 0){
-            fprintf(stderr, "mkfifo failed\n");
-            exit(EXIT_FAILURE);
-          }
-          fclient = open(resp_pipe_name, O_RDONLY);
-          if (fclient == -1) {
-            fprintf(stderr, "Pipe open failed\n");
-            exit(EXIT_FAILURE);
-          }
-          escreve = write(fresp,"1\n",2);
-          if (escreve < 0) {
-            fprintf(stderr, "Error writing in pipe\n");
-            exit(EXIT_FAILURE);
-          }
-        }
+        ems_show(fresp, event_id);
         //fprintf(stderr, "Failed to show event\n");
         break;
       case 6:
-        escreve = write(fresp,"0\n",2);
-        if (escreve < 0) {
-          fprintf(stderr, "Error writing in pipe\n");
-          exit(EXIT_FAILURE);
-        }
-        if(ems_list_events(fresp)){
-          unlink(resp_pipe_name);
-          if (unlink(resp_pipe_name) != 0 && errno != ENOENT) {
-            fprintf(stderr, "unlink failed\n");
-            exit(EXIT_FAILURE);
-          }
-          if (mkfifo(resp_pipe_name, 0777) < 0){
-            fprintf(stderr, "mkfifo failed\n");
-            exit(EXIT_FAILURE);
-          }
-          fclient = open(resp_pipe_name, O_RDONLY);
-          if (fclient == -1) {
-            fprintf(stderr, "Pipe open failed\n");
-            exit(EXIT_FAILURE);
-          }
-          escreve = write(fresp,"1\n",2);
-          if (escreve < 0) {
-            fprintf(stderr, "Error writing in pipe\n");
-            exit(EXIT_FAILURE);
-          }
-        }
+        ems_list_events(fresp);
           //fprintf(stderr, "Failed to list events\n");
         break;
     }
