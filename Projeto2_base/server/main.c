@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <errno.h>
+#include <string.h>
 
 #include "common/constants.h"
 #include "common/io.h"
@@ -50,6 +51,9 @@ void *threadfunction(int op, char *req_pipe_name, char *resp_pipe_name){
     }
     int code_number = atoi(strtok(buffer, " "));
     buffer[ret] = 0;
+    unsigned int event_id;
+    long int escreve;
+    int fclient;
     switch (code_number) {
       case 2:
         ems_terminate();
@@ -59,60 +63,90 @@ void *threadfunction(int op, char *req_pipe_name, char *resp_pipe_name){
         unlink(resp_pipe_name);
         exit(EXIT_SUCCESS);
       case 3:
-        unsigned int event_id = (unsigned int)(atoi(strtok(NULL, " ")));
+        event_id = (unsigned int)(atoi(strtok(NULL, " ")));
         size_t num_rows = (size_t)(atoi(strtok(NULL, " ")));
         size_t num_columns = (size_t)(atoi(strtok(NULL, " ")));
-        int ret = ems_create(event_id, num_rows, num_columns);
-
-        // fprintf(stderr, "Failed to create event\n");
-        char *str = (char*) malloc(sizeof(char)*16);
-        sprintf(str,"%u",ret);
-        long int escreve = write(fresp, str ,sizeof(char)*(strlen(str)));
+        if(ems_create(event_id, num_rows, num_columns))
+          escreve = write(fresp,"1\n",2);
+        else
+          escreve = write(fresp,"0\n",2);
         if (escreve < 0) {
           fprintf(stderr, "Error writing in pipe\n");
-          free(str);
           exit(EXIT_FAILURE);
         }
-        free(str);
         break;
       case 4:
-        unsigned int event_id = (unsigned int)(atoi(strtok(NULL, " ")));
+        event_id = (unsigned int)(atoi(strtok(NULL, " ")));
         size_t num_coords = (size_t)(atoi(strtok(NULL, " ")));
         size_t* xs = (size_t*)(atoi(strtok(NULL, " ")));///memoria
         size_t* ys = (size_t*)(atoi(strtok(NULL, " ")));///memoria
-        int ret = ems_reserve(event_id, num_coords, xs, ys);
-          // fprintf(stderr, "Failed to create event\n");
-        char *str = (char*) malloc(sizeof(char)*16);
-        sprintf(str,"%u",ret);
-        long int escreve = write(fresp, str ,sizeof(char)*(strlen(str)));
+        if(ems_reserve(event_id, num_coords, xs, ys))
+          escreve = write(fresp,"1\n",2);
+        else
+          escreve = write(fresp,"0\n",2);
         if (escreve < 0) {
           fprintf(stderr, "Error writing in pipe\n");
-          free(str);
           exit(EXIT_FAILURE);
         }
-        free(str);
+        // fprintf(stderr, "Failed to create event\n");
         break;
       case 5:
-        int out_fd = atoi(strtok(NULL, " "));
-        unsigned int event_id = (unsigned int)(atoi(strtok(NULL, " ")));
-        int ret = ems_show(out_fd, event_id);
-        char *str = (char*) malloc(sizeof(char)*16);
-        sprintf(str,"%u",ret);
-        if (ret){
-          long int escreve = write(fresp, str ,sizeof(char)*(strlen(str)));
-          if (escreve < 0) {
-            fprintf(stderr, "Error writing in pipe\n");
-            free(str);
+        event_id = (unsigned int)(atoi(strtok(NULL, " ")));
+        escreve = write(fresp,"0\n",2);
+        if (escreve < 0) {
+          fprintf(stderr, "Error writing in pipe\n");
+          exit(EXIT_FAILURE);
+        }
+        if(ems_show(fresp, event_id)){
+          unlink(resp_pipe_name);
+          if (unlink(resp_pipe_name) != 0 && errno != ENOENT) {
+            fprintf(stderr, "unlink failed\n");
             exit(EXIT_FAILURE);
           }
-          free(str);
-          break;
+          if (mkfifo(resp_pipe_name, 0777) < 0){
+            fprintf(stderr, "mkfifo failed\n");
+            exit(EXIT_FAILURE);
+          }
+          fclient = open(resp_pipe_name, O_RDONLY);
+          if (fclient == -1) {
+            fprintf(stderr, "Pipe open failed\n");
+            exit(EXIT_FAILURE);
+          }
+          escreve = write(fresp,"1\n",2);
+          if (escreve < 0) {
+            fprintf(stderr, "Error writing in pipe\n");
+            exit(EXIT_FAILURE);
+          }
         }
-
         //fprintf(stderr, "Failed to show event\n");
         break;
       case 6:
-      if (ems_list_events(out_fd))
+        escreve = write(fresp,"0\n",2);
+        if (escreve < 0) {
+          fprintf(stderr, "Error writing in pipe\n");
+          exit(EXIT_FAILURE);
+        }
+        if(ems_list_events(fresp)){
+          unlink(resp_pipe_name);
+          if (unlink(resp_pipe_name) != 0 && errno != ENOENT) {
+            fprintf(stderr, "unlink failed\n");
+            exit(EXIT_FAILURE);
+          }
+          if (mkfifo(resp_pipe_name, 0777) < 0){
+            fprintf(stderr, "mkfifo failed\n");
+            exit(EXIT_FAILURE);
+          }
+          fclient = open(resp_pipe_name, O_RDONLY);
+          if (fclient == -1) {
+            fprintf(stderr, "Pipe open failed\n");
+            exit(EXIT_FAILURE);
+          }
+          escreve = write(fresp,"1\n",2);
+          if (escreve < 0) {
+            fprintf(stderr, "Error writing in pipe\n");
+            exit(EXIT_FAILURE);
+          }
+        }
           //fprintf(stderr, "Failed to list events\n");
         break;
     }
@@ -186,8 +220,8 @@ int main(int argc, char* argv[]) {
     }
     buffer[ret] = 0;
     int op = atoi(strtok(buffer, " "));
-    char req_pipe_name = strtok(NULL, " ");
-    char resp_pipe_name = strtok(NULL, " ");
+    char* req_pipe_name = strtok(NULL, " ");
+    char* resp_pipe_name = strtok(NULL, " ");
     threadfunction(op,req_pipe_name,resp_pipe_name);
     
     //TODO: Write new client to the producer-consumer buffer
