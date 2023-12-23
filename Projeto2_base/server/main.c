@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -10,6 +11,115 @@
 #include "common/constants.h"
 #include "common/io.h"
 #include "operations.h"
+#define TAMMSG 1000
+
+void *threadfunction(int op, char *req_pipe_name, char *resp_pipe_name){
+  int freq = open(req_pipe_name, O_RDONLY);
+  if (freq == -1){
+    fprintf(stderr, "Server open failed\n");
+    exit(EXIT_FAILURE);
+  }
+  int fresp = open(resp_pipe_name, O_WRONLY);
+  if (fresp == -1){
+    fprintf(stderr, "Server open failed\n");
+    exit(EXIT_FAILURE);
+  }
+  
+  if(op == 1){
+    int session_id = 0;
+    char *str = (char*) malloc(sizeof(char)*16);
+    sprintf(str,"%u",session_id);
+    ssize_t ret = write(fresp, str, sizeof(str));
+    if (ret < 0) {
+      fprintf(stderr, "Write failed\n");
+      exit(EXIT_FAILURE);
+    }
+    op = 0;
+    free(str);
+  }
+
+  while (1){
+    char buffer[10];
+    ssize_t ret = read(freq, buffer, 10 - 1);
+    if (ret == 0) {
+      fprintf(stderr, "pipe closed\n");
+      exit(EXIT_FAILURE);
+    } else if (ret == -1) {
+      fprintf(stderr, "read failed\n");
+      exit(EXIT_FAILURE);
+    }
+    int code_number = atoi(strtok(buffer, " "));
+    buffer[ret] = 0;
+    switch (code_number) {
+      case 2:
+        ems_terminate();
+        close(freq);
+        close(fresp);
+        unlink(req_pipe_name);
+        unlink(resp_pipe_name);
+        exit(EXIT_SUCCESS);
+      case 3:
+        unsigned int event_id = (unsigned int)(atoi(strtok(NULL, " ")));
+        size_t num_rows = (size_t)(atoi(strtok(NULL, " ")));
+        size_t num_columns = (size_t)(atoi(strtok(NULL, " ")));
+        int ret = ems_create(event_id, num_rows, num_columns);
+
+        // fprintf(stderr, "Failed to create event\n");
+        char *str = (char*) malloc(sizeof(char)*16);
+        sprintf(str,"%u",ret);
+        long int escreve = write(fresp, str ,sizeof(char)*(strlen(str)));
+        if (escreve < 0) {
+          fprintf(stderr, "Error writing in pipe\n");
+          free(str);
+          exit(EXIT_FAILURE);
+        }
+        free(str);
+        break;
+      case 4:
+        unsigned int event_id = (unsigned int)(atoi(strtok(NULL, " ")));
+        size_t num_coords = (size_t)(atoi(strtok(NULL, " ")));
+        size_t* xs = (size_t*)(atoi(strtok(NULL, " ")));///memoria
+        size_t* ys = (size_t*)(atoi(strtok(NULL, " ")));///memoria
+        int ret = ems_reserve(event_id, num_coords, xs, ys);
+          // fprintf(stderr, "Failed to create event\n");
+        char *str = (char*) malloc(sizeof(char)*16);
+        sprintf(str,"%u",ret);
+        long int escreve = write(fresp, str ,sizeof(char)*(strlen(str)));
+        if (escreve < 0) {
+          fprintf(stderr, "Error writing in pipe\n");
+          free(str);
+          exit(EXIT_FAILURE);
+        }
+        free(str);
+        break;
+      case 5:
+        int out_fd = atoi(strtok(NULL, " "));
+        unsigned int event_id = (unsigned int)(atoi(strtok(NULL, " ")));
+        int ret = ems_show(out_fd, event_id);
+        char *str = (char*) malloc(sizeof(char)*16);
+        sprintf(str,"%u",ret);
+        if (ret){
+          long int escreve = write(fresp, str ,sizeof(char)*(strlen(str)));
+          if (escreve < 0) {
+            fprintf(stderr, "Error writing in pipe\n");
+            free(str);
+            exit(EXIT_FAILURE);
+          }
+          free(str);
+          break;
+        }
+
+        //fprintf(stderr, "Failed to show event\n");
+        break;
+      case 6:
+      if (ems_list_events(out_fd))
+          //fprintf(stderr, "Failed to list events\n");
+        break;
+    }
+  }
+  exit(EXIT_SUCCESS);
+}
+
 
 int main(int argc, char* argv[]) {
   if (argc < 2 || argc > 3) {
@@ -18,7 +128,8 @@ int main(int argc, char* argv[]) {
   }
   char *pipe_name = "";
   char* endptr;
-  int fcli, fserv;
+  int fserv;
+
   unsigned int state_access_delay_us = STATE_ACCESS_DELAY_US;
   if (argc == 3) {
     unsigned long int delay = strtoul(argv[2], &endptr, 10);
@@ -61,13 +172,28 @@ int main(int argc, char* argv[]) {
 
   while (1) {
     /*OK JA PERCEBI NO API NOS CRIAMOS O PIPE DO CLINTE
-    DENTRO DA FUNÇAO DO EMS_SETUP VAI ESCREVER NO PIPE_NAME 
+    DENTRO DA FUNCAO DO EMS_SETUP VAI ESCREVER NO PIPE_NAME 
     DESTE LADO LEMOS MEIO QUE INSCREVEMOS O DUDE NO SERVER */
-    
     //TODO: Read from pipe
-
+    char buffer[TAMMSG];
+    ssize_t ret = read(fserv, buffer, TAMMSG - 1);
+    if (ret == 0) {
+      fprintf(stderr, "Pipe closed\n");
+      exit(EXIT_SUCCESS);
+    } else if (ret == -1) {
+        fprintf(stderr, "Read failed\n");
+        exit(EXIT_FAILURE);
+    }
+    buffer[ret] = 0;
+    int op = atoi(strtok(buffer, " "));
+    char req_pipe_name = strtok(NULL, " ");
+    char resp_pipe_name = strtok(NULL, " ");
+    threadfunction(op,req_pipe_name,resp_pipe_name);
+    
     //TODO: Write new client to the producer-consumer buffer
   }
+  /*QUANDO O SERVIDOR ESTA CHEIO ENTAO FAZEMOS PTHREAD_WAIT QUE IRA FAZER ESPERAR ATE QUE UM
+  CLIENTE SAIA DO SERVIDOR, QUANDO UM CLIENTE SAI ENTAO FAZEMOS SIGNEL PARA PODER ENTRAR OUTRO BACANO*/
 
   //TODO: Close Server
   close(fserv);
