@@ -5,7 +5,6 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <unistd.h>
 #include <errno.h>
 #include <string.h>
 #include <pthread.h>
@@ -78,10 +77,6 @@ void *threadfunction(void* arg){
           exit(EXIT_FAILURE);
         }
         ems_terminate();
-        close(freq);
-        close(fresp);
-        unlink(req_pipe_name);
-        unlink(resp_pipe_name);
         exit(EXIT_SUCCESS);
       case 3:
         event_id = (unsigned int)(atoi(strtok(NULL, " ")));
