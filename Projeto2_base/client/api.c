@@ -157,11 +157,25 @@ int ems_show(int out_fd, unsigned int event_id) {
   }
   ret = (atoi(strtok(buffer, " ")));
   if(ret != 1){
-    size_t num_rows = (size_t)(atoi(strtok(buffer, " ")));
-    size_t num_columns = (size_t)(atoi(strtok(buffer, " ")));
-    size_t* xs = (size_t*)(strtok(buffer, " "));///memoria
+    size_t num_rows = (size_t)(atoi(strtok(NULL, " ")));
+    size_t num_columns = (size_t)(atoi(strtok(NULL, " ")));
+    char mensagem[(num_columns*2)+1];
+    for (size_t i = 0; i < num_rows; i++){
+      ret = read(resp_pipe, mensagem, (num_columns*2)+1);
+      if (ret == 0) {
+        fprintf(stderr, "pipe closed\n");
+        exit(EXIT_FAILURE);
+      } else if (ret == -1) {
+        fprintf(stderr, "read failed\n");
+        exit(EXIT_FAILURE);
+      }
+      ret = write(out_fd, mensagem, (num_columns*2)+1);
+      if (ret == -1) {
+        fprintf(stderr, "write failed\n");
+        exit(EXIT_FAILURE);
+      }
+    }
   }
-
   return 1;
 }
 
@@ -189,7 +203,7 @@ int ems_list_events(int out_fd) {
   }
   ret = (atoi(strtok(buffer, " ")));
   if(ret != 1){
-    size_t num_events = (size_t)(atoi(strtok(buffer, " ")));
+    size_t num_events = (size_t)(atoi(strtok(NULL, " ")));
     for (size_t i = 0; i < num_events; i++){
       ret = read(resp_pipe, buffer, TAMMSG - 1);
       if (ret == 0) {

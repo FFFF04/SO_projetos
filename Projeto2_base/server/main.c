@@ -201,9 +201,12 @@ int main(int argc, char* argv[]) {
     }
     active++;
     if (pthread_mutex_unlock(&g_mutex) != 0) {
-        exit(EXIT_FAILURE);
+      exit(EXIT_FAILURE);
     }
-    pthread_detach(thread_id[(i) % S]);
+    if(pthread_detach(thread_id[(i) % S]) != 0){
+      fprintf(stderr, "Failed to detach thread\n");
+      exit(EXIT_FAILURE);
+    }
     i++;
     free(buffer);
     //TODO: Write new client to the producer-consumer buffer

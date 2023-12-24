@@ -205,7 +205,9 @@ int ems_show(int out_fd, unsigned int event_id) {
     return 1;
   }
 
-  escreve = write(out_fd,"0\n",2);
+  char msg[16];
+  sprintf(msg,"0 %zu %zu\n",event->rows,event->cols);
+  escreve = write(out_fd,msg,16);
   if (escreve < 0) {
     fprintf(stderr, "Error writing in pipe\n");
     exit(EXIT_FAILURE);
@@ -260,6 +262,11 @@ int ems_list_events(int out_fd) {
   int contador = 0;
   
   while (1) {
+    if (head == NULL) {
+      contador++;
+      break;
+    }
+    
     if (head == tail) break;
 
     contador++;
