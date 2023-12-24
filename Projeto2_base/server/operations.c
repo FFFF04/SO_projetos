@@ -255,7 +255,19 @@ int ems_list_events(int out_fd) {
     return 1;
   }
   
-  escreve = write(out_fd,"0\n",2);
+  struct ListNode* tail = event_list->tail;
+  struct ListNode* head = event_list->head;
+  int contador = 0;
+  
+  while (1) {
+    if (head == tail) break;
+
+    contador++;
+    head = head->next;
+  }
+  char msg[16];
+  sprintf(msg,"0 %d\n",contador);
+  escreve = write(out_fd,msg,16);
   if (escreve < 0) {
     fprintf(stderr, "Error writing in pipe\n");
     exit(EXIT_FAILURE);
