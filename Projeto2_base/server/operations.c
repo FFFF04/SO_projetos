@@ -229,7 +229,6 @@ int ems_show(int out_fd, unsigned int event_id) {
         }
       }
     }
-
     if (print_str(out_fd, "\n")) {
       perror("Error writing to file descriptor");
       pthread_mutex_unlock(&event->mutex);

@@ -8,14 +8,29 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
+#include <pthread.h>
 
 #include "common/constants.h"
 #include "common/io.h"
 #include "operations.h"
 
 #define TAMMSG 1000
+typedef struct{
+  int session_id;
+  char *mesg;
+}data;
 
-void *threadfunction(int op, char *req_pipe_name, char *resp_pipe_name){
+int S = 3;
+int active = 0;
+pthread_mutex_t g_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+
+
+void *threadfunction(void* arg){
+  data *valores = (data*) arg;
+  int op = atoi(strtok(valores->mesg, " "));
+  char* req_pipe_name = strtok(NULL, " ");
+  char* resp_pipe_name = strtok(NULL, " ");
   int freq = open(req_pipe_name, O_RDONLY);
   if (freq == -1){
     fprintf(stderr, "Server open failed\n");
@@ -28,9 +43,8 @@ void *threadfunction(int op, char *req_pipe_name, char *resp_pipe_name){
   }
   
   if(op == 1){
-    unsigned int session_id = 0;
     char buffer[16];
-    sprintf(buffer, "%u", session_id);
+    sprintf(buffer, "%d", valores->session_id);
     ssize_t ret = write(fresp, buffer, sizeof(buffer));
     if (ret < 0) {
       fprintf(stderr, "Write failed\n");
@@ -55,6 +69,14 @@ void *threadfunction(int op, char *req_pipe_name, char *resp_pipe_name){
     ssize_t escreve;
     switch (code_number) {
       case 2:
+        if (pthread_mutex_lock(&g_mutex) != 0) {
+          exit(EXIT_FAILURE);
+        }
+        active--;
+        pthread_cond_signal(&cond);
+        if (pthread_mutex_unlock(&g_mutex) != 0) {
+          exit(EXIT_FAILURE);
+        }
         ems_terminate();
         close(freq);
         close(fresp);
@@ -77,8 +99,8 @@ void *threadfunction(int op, char *req_pipe_name, char *resp_pipe_name){
       case 4:
         event_id = (unsigned int)(atoi(strtok(NULL, " ")));
         size_t num_coords = (size_t)(atoi(strtok(NULL, " ")));
-        size_t* xs = (size_t*)(atoi(strtok(NULL, " ")));///memoria
-        size_t* ys = (size_t*)(atoi(strtok(NULL, " ")));///memoria
+        size_t* xs = (size_t*)(strtok(NULL, " "));///memoria
+        size_t* ys = (size_t*)(strtok(NULL, " "));///memoria
         if(ems_reserve(event_id, num_coords, xs, ys))
           escreve = write(fresp,"1\n",2);
         else
@@ -153,27 +175,42 @@ int main(int argc, char* argv[]) {
     fprintf(stderr, "Server open failed\n");
     exit(EXIT_FAILURE);
   }
-
+  data clients[S + 1];
+  pthread_t thread_id[S + 1];
+  int user_id = 1;
+  int i = 0; 
   while (1) {
     /*OK JA PERCEBI NO API NOS CRIAMOS O PIPE DO CLINTE
     DENTRO DA FUNCAO DO EMS_SETUP VAI ESCREVER NO PIPE_NAME 
     DESTE LADO LEMOS MEIO QUE INSCREVEMOS O DUDE NO SERVER */
     //TODO: Read from pipe
-    char buffer[TAMMSG];
+    char *buffer = (char*) malloc(sizeof(char) * TAMMSG);
     ssize_t ret = read(fserv, buffer, TAMMSG - 1);
     if (ret == 0) {
       fprintf(stderr, "Pipe closed\n");
       exit(EXIT_SUCCESS);
     } else if (ret == -1) {
-        fprintf(stderr, "Read failed\n");
-        exit(EXIT_FAILURE);
+      fprintf(stderr, "Read failed\n");
+      exit(EXIT_FAILURE);
     }
     buffer[ret] = 0;
-    int op = atoi(strtok(buffer, " "));
-    char* req_pipe_name = strtok(NULL, " ");
-    char* resp_pipe_name = strtok(NULL, " ");
-    threadfunction(op,req_pipe_name,resp_pipe_name);
-    
+    if (pthread_mutex_lock(&g_mutex) != 0)
+      exit(EXIT_FAILURE);
+    while (active == S)
+      pthread_cond_wait(&cond, &g_mutex);
+    strcpy(clients[(i) % S].mesg,buffer);
+    clients[(i) % S].session_id = user_id++;
+    if (pthread_create(&thread_id[(i) % S], NULL, &threadfunction, &clients[(i) % S]) != 0){
+      fprintf(stderr, "Failed to create thread\n");
+      exit(EXIT_FAILURE);
+    }
+    active++;
+    if (pthread_mutex_unlock(&g_mutex) != 0) {
+        exit(EXIT_FAILURE);
+    }
+    pthread_detach(thread_id[(i) % S]);
+    i++;
+    free(buffer);
     //TODO: Write new client to the producer-consumer buffer
   }
   /*QUANDO O SERVIDOR ESTA CHEIO ENTAO FAZEMOS PTHREAD_WAIT QUE IRA FAZER ESPERAR ATE QUE UM
