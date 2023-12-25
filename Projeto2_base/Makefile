@@ -23,8 +23,10 @@ client/client: common/io.o client/main.c client/api.o client/parser.o
 %.o: %.c %.h
 	$(CC) $(CFLAGS) -c ${@:.o=.c} -o $@
 
-run: server/ems
-	@./server/ems
+run: 
+	server/./ems server.fifo &
+	sleep 1
+	client/./client req.fifo resp.fifo server.fifo /home/francisco/SO/SO_projeto_1/Projeto2_base/jobs/test.jobs
 
 clean:
 	rm -f common/*.o client/*.o server/*.o server/ems client/client

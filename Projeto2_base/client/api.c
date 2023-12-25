@@ -18,7 +18,9 @@ char *resp_pipe_nome;
 int ems_setup(char const* req_pipe_path, char const* resp_pipe_path, char const* server_pipe_path) {
   //TODO: create pipes and connect to the server
   int fserv;
-  char buffer[TAMMSG], msg[TAMMSG];
+  char msg[TAMMSG];
+  char buffer[16] = {};
+  sleep(1);
   fserv = open(server_pipe_path, O_WRONLY);
   if (fserv == -1) {
     fprintf(stderr, "Server open failed\n");
@@ -29,17 +31,19 @@ int ems_setup(char const* req_pipe_path, char const* resp_pipe_path, char const*
     fprintf(stderr, "unlink failed\n");
     exit(EXIT_FAILURE);
   }
+
   if ((mkfifo(req_pipe_path, 0777) < 0) || (mkfifo(resp_pipe_path, 0777) < 0)){
     fprintf(stderr, "mkfifo failed\n");
     exit(EXIT_FAILURE);
   } 
-
-  req_pipe = open(req_pipe_path, O_WRONLY);
-  resp_pipe = open(resp_pipe_path, O_RDONLY);
+  req_pipe = open(req_pipe_path, O_RDWR);
+  resp_pipe = open(resp_pipe_path, O_RDWR);
   if (req_pipe == -1 || resp_pipe == -1) {
     fprintf(stderr, "Pipe open failed\n");
     exit(EXIT_FAILURE);
   }
+  req_pipe_nome = (char*) malloc(sizeof(req_pipe_path) + 1);
+  resp_pipe_nome = (char*) malloc(sizeof(resp_pipe_path) + 1);
   strcpy(req_pipe_nome,req_pipe_path);
   strcpy(resp_pipe_nome,resp_pipe_path);
   ssize_t ret;
@@ -49,20 +53,18 @@ int ems_setup(char const* req_pipe_path, char const* resp_pipe_path, char const*
     fprintf(stderr, "Write failed\n");
     exit(EXIT_FAILURE);
   }
-  sleep(1);//ACHO QUE É NECESSAIRO EM TUDO PORQUE NAO PODEMOS ESTAR LER LOGO ENQUANTO O SERVIDOR AINDA ESTA A TENTAR METER NO PIPE
-  ret = read(fserv, buffer, TAMMSG - 1);
-  if (ret == 0) {
-    fprintf(stderr, "Pipe closed\n");
-    exit(EXIT_SUCCESS);
-  } else if (ret == -1) {
-      fprintf(stderr, "Read failed\n");
-      exit(EXIT_FAILURE);
+  
+  //sleep(1);//ACHO QUE É NECESSAIRO EM TUDO PORQUE NAO PODEMOS ESTAR LER LOGO ENQUANTO O SERVIDOR AINDA ESTA A TENTAR METER NO PIPE
+  
+  ret = read(resp_pipe, buffer, 16);
+  if (ret == -1) {
+    fprintf(stderr, "Read failed\n");
+    exit(EXIT_FAILURE);
   }
   SESSION_ID = atoi(buffer);
-  return 1;
+  printf("%d\n",SESSION_ID);
+  return 0;
 }
-
-
 
 int ems_quit(void) { 
   //TODO: close pipes
@@ -73,11 +75,13 @@ int ems_quit(void) {
     fprintf(stderr, "Write failed\n");
     exit(EXIT_FAILURE);
   }
+  free(req_pipe_nome);
+  free(resp_pipe_nome);
   close(req_pipe);
   unlink(req_pipe_nome);
   close(resp_pipe);
   unlink(resp_pipe_nome);
-  return 1;
+  return 0;
 }
 
 
@@ -95,15 +99,12 @@ int ems_create(unsigned int event_id, size_t num_rows, size_t num_cols) {
   }
   
   ret = read(resp_pipe, buffer, TAMMSG - 1);
-  if (ret == 0) {
-    fprintf(stderr, "pipe closed\n");
-    exit(EXIT_FAILURE);
-  } else if (ret == -1) {
+  if (ret == -1) {
     fprintf(stderr, "read failed\n");
     exit(EXIT_FAILURE);
   }
   ret = (atoi(strtok(buffer, " ")));
-  return 1;
+  return 0;
 }
 
 
@@ -121,16 +122,13 @@ int ems_reserve(unsigned int event_id, size_t num_seats, size_t* xs, size_t* ys)
   }
 
   ret = read(resp_pipe, buffer, TAMMSG - 1);
-  if (ret == 0) {
-    fprintf(stderr, "pipe closed\n");
-    exit(EXIT_FAILURE);
-  } else if (ret == -1) {
+  if (ret == -1) {
     fprintf(stderr, "read failed\n");
     exit(EXIT_FAILURE);
   }
   ret = (atoi(strtok(buffer, " ")));
 
-  return 1;
+  return 0;
 }
 
 
@@ -148,10 +146,7 @@ int ems_show(int out_fd, unsigned int event_id) {
   }
 
   ret = read(resp_pipe, buffer, TAMMSG - 1);
-  if (ret == 0) {
-    fprintf(stderr, "pipe closed\n");
-    exit(EXIT_FAILURE);
-  } else if (ret == -1) {
+  if (ret == -1) {
     fprintf(stderr, "read failed\n");
     exit(EXIT_FAILURE);
   }
@@ -162,10 +157,7 @@ int ems_show(int out_fd, unsigned int event_id) {
     char mensagem[(num_columns*2)+1];
     for (size_t i = 0; i < num_rows; i++){
       ret = read(resp_pipe, mensagem, (num_columns*2)+1);
-      if (ret == 0) {
-        fprintf(stderr, "pipe closed\n");
-        exit(EXIT_FAILURE);
-      } else if (ret == -1) {
+      if (ret == -1) {
         fprintf(stderr, "read failed\n");
         exit(EXIT_FAILURE);
       }
@@ -176,7 +168,7 @@ int ems_show(int out_fd, unsigned int event_id) {
       }
     }
   }
-  return 1;
+  return 0;
 }
 
 
@@ -194,10 +186,7 @@ int ems_list_events(int out_fd) {
   }
 
   ret = read(resp_pipe, buffer, TAMMSG - 1);
-  if (ret == 0) {
-    fprintf(stderr, "pipe closed\n");
-    exit(EXIT_FAILURE);
-  } else if (ret == -1) {
+  if (ret == -1) {
     fprintf(stderr, "read failed\n");
     exit(EXIT_FAILURE);
   }
@@ -206,10 +195,7 @@ int ems_list_events(int out_fd) {
     size_t num_events = (size_t)(atoi(strtok(NULL, " ")));
     for (size_t i = 0; i < num_events; i++){
       ret = read(resp_pipe, buffer, TAMMSG - 1);
-      if (ret == 0) {
-        fprintf(stderr, "pipe closed\n");
-        exit(EXIT_FAILURE);
-      } else if (ret == -1) {
+      if (ret == -1) {
         fprintf(stderr, "read failed\n");
         exit(EXIT_FAILURE);
       }
@@ -222,5 +208,5 @@ int ems_list_events(int out_fd) {
     //unsigned int *ids = strtok(buffer, " ");///memoria
   }
 
-  return 1;
+  return 0;
 }

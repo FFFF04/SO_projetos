@@ -19,7 +19,7 @@ typedef struct{
   char *mesg;
 }data;
 
-int S = 3;
+int S = 1;
 int active = 0;
 pthread_mutex_t g_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
@@ -42,7 +42,7 @@ void *threadfunction(void* arg){
   }
   
   if(op == 1){
-    char buffer[16];
+    char buffer[16] = {};
     sprintf(buffer, "%d", valores->session_id);
     ssize_t ret = write(fresp, buffer, sizeof(buffer));
     if (ret < 0) {
@@ -51,15 +51,11 @@ void *threadfunction(void* arg){
     }
     op = 0;
   }
-
   while (1){
-    char buffer[10];
-    ssize_t ret = read(freq, buffer, 10 - 1);
-    if (ret == 0) {
-      fprintf(stderr, "pipe closed\n");
-      exit(EXIT_FAILURE);
-    } else if (ret == -1) {
-      fprintf(stderr, "read failed\n");
+    char buffer[TAMMSG];
+    ssize_t ret = read(freq, buffer, TAMMSG);
+    if (ret == -1) {
+      fprintf(stderr, "Read failed\n");
       exit(EXIT_FAILURE);
     }
     int code_number = atoi(strtok(buffer, " "));
@@ -179,35 +175,38 @@ int main(int argc, char* argv[]) {
     DENTRO DA FUNCAO DO EMS_SETUP VAI ESCREVER NO PIPE_NAME 
     DESTE LADO LEMOS MEIO QUE INSCREVEMOS O DUDE NO SERVER */
     //TODO: Read from pipe
+
     char *buffer = (char*) malloc(sizeof(char) * TAMMSG);
+    memset(buffer, 0, sizeof(char) * TAMMSG);
     ssize_t ret = read(fserv, buffer, TAMMSG - 1);
-    if (ret == 0) {
-      fprintf(stderr, "Pipe closed\n");
-      exit(EXIT_SUCCESS);
-    } else if (ret == -1) {
+    if (ret == -1) {
       fprintf(stderr, "Read failed\n");
       exit(EXIT_FAILURE);
     }
     buffer[ret] = 0;
-    if (pthread_mutex_lock(&g_mutex) != 0)
-      exit(EXIT_FAILURE);
-    while (active == S)
-      pthread_cond_wait(&cond, &g_mutex);
-    strcpy(clients[(i) % S].mesg,buffer);
-    clients[(i) % S].session_id = user_id++;
-    if (pthread_create(&thread_id[(i) % S], NULL, &threadfunction, &clients[(i) % S]) != 0){
-      fprintf(stderr, "Failed to create thread\n");
-      exit(EXIT_FAILURE);
+    if (buffer[0] != 0){
+      if (pthread_mutex_lock(&g_mutex) != 0) {exit(EXIT_FAILURE);}
+      while (active == S)
+        pthread_cond_wait(&cond, &g_mutex);
+      
+      printf("%s\n",buffer);
+      fflush(stdout);
+      strcpy(clients[(i) % S].mesg,buffer);
+      clients[(i) % S].session_id = user_id++;
+      if (pthread_create(&thread_id[(i) % S], NULL, &threadfunction, &clients[(i) % S]) != 0){
+        fprintf(stderr, "Failed to create thread\n");
+        exit(EXIT_FAILURE);
+      }
+      active++;
+      if (pthread_mutex_unlock(&g_mutex) != 0) {
+        exit(EXIT_FAILURE);
+      }
+      if(pthread_detach(thread_id[(i) % S]) != 0){
+        fprintf(stderr, "Failed to detach thread\n");
+        exit(EXIT_FAILURE);
+      }
+      i++;
     }
-    active++;
-    if (pthread_mutex_unlock(&g_mutex) != 0) {
-      exit(EXIT_FAILURE);
-    }
-    if(pthread_detach(thread_id[(i) % S]) != 0){
-      fprintf(stderr, "Failed to detach thread\n");
-      exit(EXIT_FAILURE);
-    }
-    i++;
     free(buffer);
     //TODO: Write new client to the producer-consumer buffer
   }
