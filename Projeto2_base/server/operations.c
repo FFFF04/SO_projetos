@@ -4,6 +4,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "common/constants.h"
 #include "common/io.h"
 #include "eventlist.h"
 
@@ -206,6 +207,44 @@ int ems_show(int out_fd, unsigned int event_id) {
   }
 
   char msg[16];
+  char buffer[TAMMSG] = {};
+  sprintf(msg,"0 %zu %zu|\n ",event->rows,event->cols);
+  strcat(buffer,msg);
+  for (size_t i = 1; i <= event->rows; i++) {
+    for (size_t j = 1; j <= event->cols; j++) {
+      char buf[16];
+      sprintf(buf, "%u ", event->data[seat_index(event, i, j)]);
+      strcat(buffer,buf);
+      // if (print_str(out_fd, buffer)) {
+      //   perror("Error writing to file descriptor");
+      //   pthread_mutex_unlock(&event->mutex);
+      //   return 1;
+      // }
+
+      // if (j < event->cols) {
+      //   if (print_str(out_fd, " ")) {
+      //     perror("Error writing to file descriptor");
+      //     pthread_mutex_unlock(&event->mutex);
+      //     return 1;
+      //   }
+      // }
+    }
+    strcat(buffer,"\n");
+    // if (print_str(out_fd, "\n")) {
+    //   perror("Error writing to file descriptor");
+    //   pthread_mutex_unlock(&event->mutex);
+    //   return 1;
+    // }
+  }
+  escreve = write(out_fd,buffer,TAMMSG);
+  if (escreve < 0) {
+    fprintf(stderr, "Error writing in pipe\n");
+    exit(EXIT_FAILURE);
+  }
+  pthread_mutex_unlock(&event->mutex);
+  return 0;
+
+  /*char msg[16];
   sprintf(msg,"0 %zu %zu\n",event->rows,event->cols);
   escreve = write(out_fd,msg,16);
   if (escreve < 0) {
@@ -215,7 +254,7 @@ int ems_show(int out_fd, unsigned int event_id) {
   for (size_t i = 1; i <= event->rows; i++) {
     for (size_t j = 1; j <= event->cols; j++) {
       char buffer[16];
-      sprintf(buffer, "%u", event->data[seat_index(event, i, j)]);
+      sprintf(buffer, "%u ", event->data[seat_index(event, i, j)]);
 
       if (print_str(out_fd, buffer)) {
         perror("Error writing to file descriptor");
@@ -237,9 +276,8 @@ int ems_show(int out_fd, unsigned int event_id) {
       return 1;
     }
   }
-
   pthread_mutex_unlock(&event->mutex);
-  return 0;
+  return 0;*/
 }
 
 int ems_list_events(int out_fd) {

@@ -13,7 +13,6 @@
 #include "common/io.h"
 #include "operations.h"
 
-#define TAMMSG 1000
 typedef struct{
   int session_id;
   char *mesg;
@@ -90,13 +89,15 @@ void *threadfunction(void* arg){
       case 4:
         event_id = (unsigned int)(atoi(strtok(NULL, " ")));
         size_t num_coords = (size_t)(atoi(strtok(NULL, " ")));
-        size_t* xs = (size_t*)(strtok(NULL, " "));///memoria
-        size_t* ys = (size_t*)(strtok(NULL, " "));///memoria
+        size_t xs[MAX_RESERVATION_SIZE], ys[MAX_RESERVATION_SIZE];
+        for (size_t i = 0; i < num_coords; i++) {
+          xs[i] = (size_t)atoi(strtok(NULL, " "));
+          ys[i] = (size_t)atoi(strtok(NULL, " "));
+        }
         if(ems_reserve(event_id, num_coords, xs, ys))
           escreve = write(fresp,"1\n",2);
         else
           escreve = write(fresp,"0\n",2);
-        
         if (escreve < 0) {
           fprintf(stderr, "Error writing in pipe\n");
           exit(EXIT_FAILURE);
@@ -188,9 +189,7 @@ int main(int argc, char* argv[]) {
       if (pthread_mutex_lock(&g_mutex) != 0) {exit(EXIT_FAILURE);}
       while (active == S)
         pthread_cond_wait(&cond, &g_mutex);
-      
-      printf("%s\n",buffer);
-      fflush(stdout);
+
       strcpy(clients[(i) % S].mesg,buffer);
       clients[(i) % S].session_id = user_id++;
       if (pthread_create(&thread_id[(i) % S], NULL, &threadfunction, &clients[(i) % S]) != 0){
