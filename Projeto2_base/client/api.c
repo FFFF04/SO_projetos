@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <errno.h>
+#include <pthread.h>
 
 #include "api.h"
 #include "common/io.h"
@@ -48,14 +49,13 @@ int ems_setup(char const* req_pipe_path, char const* resp_pipe_path, char const*
   strcpy(req_pipe_nome,req_pipe_path);
   strcpy(resp_pipe_nome,resp_pipe_path);
   ssize_t ret;
-  snprintf(msg, TAMMSG, "1 %s %s ", req_pipe_path, resp_pipe_path);
+  snprintf(msg, TAMMSG, "1 %s %s \n", req_pipe_path, resp_pipe_path);
   ret = write(fserv, msg, sizeof(msg));
   if (ret < 0) {
     fprintf(stderr, "Write failed\n");
     exit(EXIT_FAILURE);
   }
-  
-  //sleep(1);//ACHO QUE É NECESSAIRO EM TUDO PORQUE NAO PODEMOS ESTAR LER LOGO ENQUANTO O SERVIDOR AINDA ESTA A TENTAR METER NO PIPE
+  sleep(1);//ACHO QUE É NECESSAIRO EM TUDO PORQUE NAO PODEMOS ESTAR LER LOGO ENQUANTO O SERVIDOR AINDA ESTA A TENTAR METER NO PIPE
   ret = read(resp_pipe, buffer, 16);
   if (ret == -1) {
     fprintf(stderr, "Read failed\n");
@@ -167,7 +167,8 @@ int ems_show(int out_fd, unsigned int event_id) {
     if (ret == -1){
       fprintf(stderr, "write failed\n");
       exit(EXIT_FAILURE);
-    }      
+    }
+    free(mensagem);
   }
   return 0;
 }
@@ -194,18 +195,14 @@ int ems_list_events(int out_fd) {
   ret = (atoi(strtok(buffer, " ")));
   if(ret != 1){
     size_t num_events = (size_t)(atoi(strtok(NULL, " ")));
-    for (size_t i = 0; i < num_events; i++){
-      ret = read(resp_pipe, buffer, TAMMSG - 1);
-      if (ret == -1) {
-        fprintf(stderr, "read failed\n");
-        exit(EXIT_FAILURE);
-      }
-      ret = write(out_fd, buffer, TAMMSG - 1);
-      if (ret == -1) {
-        fprintf(stderr, "write failed\n");
-        exit(EXIT_FAILURE);
-      }
+    char *mensagem = (char*) malloc((num_events)+1);
+    mensagem = strtok(NULL,"|");
+    ret = write(out_fd, mensagem, (num_events)+1);
+    if (ret == -1){
+      fprintf(stderr, "write failed\n");
+      exit(EXIT_FAILURE);
     }
+    free(mensagem);
     //unsigned int *ids = strtok(buffer, " ");///memoria
   }
 

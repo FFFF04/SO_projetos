@@ -26,7 +26,8 @@ client/client: common/io.o client/main.c client/api.o client/parser.o
 run: 
 	server/./ems server.fifo &
 	sleep 1
-	client/./client req.fifo resp.fifo server.fifo /home/francisco/SO/SO_projeto_1/Projeto2_base/jobs/test.jobs
+	client/./client req.fifo resp.fifo server.fifo /home/francisco/SO/SO_projeto_1/Projeto2_base/jobs/test.jobs &
+	client/./client areq.fifo aresp.fifo server.fifo /home/francisco/SO/SO_projeto_1/Projeto2_base/jobs/a.jobs
 
 clean:
 	rm -f common/*.o client/*.o server/*.o server/ems client/client

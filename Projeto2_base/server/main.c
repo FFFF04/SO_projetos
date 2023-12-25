@@ -18,9 +18,10 @@ typedef struct{
   char *mesg;
 }data;
 
-int S = 1;
+int S = MAX_SESSION_COUNT;
 int active = 0;
 pthread_mutex_t g_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t read_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 
 
@@ -172,11 +173,8 @@ int main(int argc, char* argv[]) {
   int user_id = 1;
   int i = 0; 
   while (1) {
-    /*OK JA PERCEBI NO API NOS CRIAMOS O PIPE DO CLINTE
-    DENTRO DA FUNCAO DO EMS_SETUP VAI ESCREVER NO PIPE_NAME 
-    DESTE LADO LEMOS MEIO QUE INSCREVEMOS O DUDE NO SERVER */
     //TODO: Read from pipe
-
+    pthread_mutex_lock(&read_lock);
     char *buffer = (char*) malloc(sizeof(char) * TAMMSG);
     memset(buffer, 0, sizeof(char) * TAMMSG);
     ssize_t ret = read(fserv, buffer, TAMMSG - 1);
@@ -185,12 +183,17 @@ int main(int argc, char* argv[]) {
       exit(EXIT_FAILURE);
     }
     buffer[ret] = 0;
+
+    printf("%s\n",buffer);
     if (buffer[0] != 0){
+      
       if (pthread_mutex_lock(&g_mutex) != 0) {exit(EXIT_FAILURE);}
       while (active == S)
         pthread_cond_wait(&cond, &g_mutex);
 
       strcpy(clients[(i) % S].mesg,buffer);
+      pthread_mutex_lock(&read_lock);
+
       clients[(i) % S].session_id = user_id++;
       if (pthread_create(&thread_id[(i) % S], NULL, &threadfunction, &clients[(i) % S]) != 0){
         fprintf(stderr, "Failed to create thread\n");
