@@ -213,14 +213,16 @@ int ems_show(int out_fd, unsigned int event_id) {
   for (size_t i = 1; i <= event->rows; i++) {
     for (size_t j = 1; j <= event->cols; j++) {
       char buf[16];
-      sprintf(buf, "%u ", event->data[seat_index(event, i, j)]);
+      sprintf(buf, "%u", event->data[seat_index(event, i, j)]);
       strcat(buffer,buf);
       // if (print_str(out_fd, buffer)) {
       //   perror("Error writing to file descriptor");
       //   pthread_mutex_unlock(&event->mutex);
       //   return 1;
       // }
-
+      if (j < event->cols)
+        strcat(buffer," ");
+      
       // if (j < event->cols) {
       //   if (print_str(out_fd, " ")) {
       //     perror("Error writing to file descriptor");
@@ -236,7 +238,7 @@ int ems_show(int out_fd, unsigned int event_id) {
     //   return 1;
     // }
   }
-  escreve = write(out_fd,buffer,TAMMSG);
+  escreve = write(out_fd,buffer,strlen(buffer));
   if (escreve < 0) {
     fprintf(stderr, "Error writing in pipe\n");
     exit(EXIT_FAILURE);
