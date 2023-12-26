@@ -4,6 +4,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <pthread.h>
+
+pthread_mutex_t fifo_lock = PTHREAD_MUTEX_INITIALIZER;
+int ola = 0;
+pthread_mutex_t getlock(){
+  return fifo_lock;
+}
+int geti(){
+  return ola;
+}
+void seti(){
+  ola++;
+}
 
 int parse_uint(int fd, unsigned int *value, char *next) {
   char buf[16];

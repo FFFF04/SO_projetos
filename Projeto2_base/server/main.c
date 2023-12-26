@@ -18,6 +18,7 @@ typedef struct{
   char *mesg;
 }data;
 
+
 int S = MAX_SESSION_COUNT;
 int active = 0;
 pthread_mutex_t g_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -52,8 +53,8 @@ void *threadfunction(void* arg){
     op = 0;
   }
   while (1){
-    char buffer[TAMMSG];
-    ssize_t ret = read(freq, buffer, TAMMSG);
+    char buffer[(TAMPIPENAME * 2) + 4];
+    ssize_t ret = read(freq, buffer, (TAMPIPENAME * 2) + 4);
     if (ret == -1) {
       fprintf(stderr, "Read failed\n");
       exit(EXIT_FAILURE);
@@ -146,14 +147,7 @@ int main(int argc, char* argv[]) {
     return 1;
   }
   //TODO: Intialize server, create worker threads
-  /*
-  COM ISTO JA TEMOS O SERVIDOR INICIALIZADO FALTA AS WORKER THREADS
-  PARA ISSO ACHO QUE TEMOS DE:
-    QUANDO QUERIAMOS UMA NOVO CLIENTE CRIASSE TAMBEM UMA THREAD NOVA QUE 
-    FICA ASSOCIADA A ESSE CLINTE
-  */
   pipe_name = argv[1];
-  unlink(pipe_name);
   if (unlink(pipe_name) != 0 && errno != ENOENT) {
     fprintf(stderr, "unlink failed\n");
     exit(EXIT_FAILURE);
@@ -170,11 +164,10 @@ int main(int argc, char* argv[]) {
   }
   data clients[S + 1];
   pthread_t thread_id[S + 1];
-  int user_id = 1;
-  int i = 0; 
+  int i = 0;
+  pthread_mutex_t fifo_lock  = getlock();
   while (1) {
     //TODO: Read from pipe
-    pthread_mutex_lock(&read_lock);
     char *buffer = (char*) malloc(sizeof(char) * TAMMSG);
     memset(buffer, 0, sizeof(char) * TAMMSG);
     ssize_t ret = read(fserv, buffer, TAMMSG - 1);
@@ -183,19 +176,17 @@ int main(int argc, char* argv[]) {
       exit(EXIT_FAILURE);
     }
     buffer[ret] = 0;
-
-    printf("%s\n",buffer);
     if (buffer[0] != 0){
-      
+      printf("adeus:%s",buffer);
       if (pthread_mutex_lock(&g_mutex) != 0) {exit(EXIT_FAILURE);}
       while (active == S)
         pthread_cond_wait(&cond, &g_mutex);
-
-      strcpy(clients[(i) % S].mesg,buffer);
-      pthread_mutex_lock(&read_lock);
-
-      clients[(i) % S].session_id = user_id++;
-      if (pthread_create(&thread_id[(i) % S], NULL, &threadfunction, &clients[(i) % S]) != 0){
+      
+      clients[i].mesg = (char*) malloc(sizeof(buffer) + 1);
+      strncpy(clients[i].mesg, buffer,sizeof(buffer) + 1);
+      pthread_mutex_unlock(&fifo_lock);
+      clients[i].session_id = i;
+      if (pthread_create(&thread_id[i], NULL, &threadfunction, &clients[i]) != 0){
         fprintf(stderr, "Failed to create thread\n");
         exit(EXIT_FAILURE);
       }
@@ -203,15 +194,16 @@ int main(int argc, char* argv[]) {
       if (pthread_mutex_unlock(&g_mutex) != 0) {
         exit(EXIT_FAILURE);
       }
-      if(pthread_detach(thread_id[(i) % S]) != 0){
+      if(pthread_detach(thread_id[i]) != 0){
         fprintf(stderr, "Failed to detach thread\n");
         exit(EXIT_FAILURE);
       }
-      i++;
+      i = (i+1) % S;
     }
-    free(buffer);
     //TODO: Write new client to the producer-consumer buffer
+    free(buffer);
   }
+  
   /*QUANDO O SERVIDOR ESTA CHEIO ENTAO FAZEMOS PTHREAD_WAIT QUE IRA FAZER ESPERAR ATE QUE UM
   CLIENTE SAIA DO SERVIDOR, QUANDO UM CLIENTE SAI ENTAO FAZEMOS SIGNEL PARA PODER ENTRAR OUTRO BACANO*/
 
