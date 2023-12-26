@@ -28,27 +28,23 @@ pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 
 void *threadfunction(void* arg){
   data *valores = (data*) arg;
-  printf("mensagem%s\n",valores->mesg);
   int op = atoi(strtok(valores->mesg, " "));
   char* req_pipe_name = strtok(NULL, " ");
   char* resp_pipe_name = strtok(NULL, " ");
-  printf("req: %s\n",req_pipe_name);
-  printf("resp: %s\n",resp_pipe_name);
   int freq = open(req_pipe_name, O_RDONLY);
   if (freq == -1){
-    fprintf(stderr, "Server open failed\n");
+    fprintf(stderr, "Pipe open failed\n");
     exit(EXIT_FAILURE);
   }
   int fresp = open(resp_pipe_name, O_WRONLY);
   if (fresp == -1){
-    fprintf(stderr, "Server open failed\n");
+    fprintf(stderr, "Pipe open failed\n");
     exit(EXIT_FAILURE);
   }
-  
   if(op == 1){
     char buffer[16] = {};
     sprintf(buffer, "%d", valores->session_id);
-    ssize_t ret = write(fresp, buffer, sizeof(buffer));
+    ssize_t ret = write(fresp, buffer, strlen(buffer) + 1);
     if (ret < 0) {
       fprintf(stderr, "Write failed\n");
       exit(EXIT_FAILURE);
@@ -56,12 +52,15 @@ void *threadfunction(void* arg){
     op = 0;
   }
   while (1){
-    char buffer[(TAMPIPENAME * 2) + 4];
-    ssize_t ret = read(freq, buffer, (TAMPIPENAME * 2) + 4);
+    char buffer[TAMMSG];
+    ssize_t ret = read(freq, buffer, TAMMSG);
     if (ret == -1) {
       fprintf(stderr, "Read failed\n");
       exit(EXIT_FAILURE);
     }
+    printf("buffer[0]: %c",buffer[0]);/////////
+    if (buffer[0] != 0)
+      continue; 
     int code_number = atoi(strtok(buffer, " "));
     buffer[ret] = 0;
     unsigned int event_id;
@@ -119,6 +118,7 @@ void *threadfunction(void* arg){
           //fprintf(stderr, "Failed to list events\n");
         break;
     }
+    memset(buffer, 0, sizeof(char) * TAMMSG);
   }
   exit(EXIT_SUCCESS);
 }

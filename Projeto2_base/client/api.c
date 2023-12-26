@@ -53,41 +53,34 @@ int ems_setup(char const* req_pipe_path, char const* resp_pipe_path, char const*
     exit(EXIT_FAILURE);
   } 
 
-  req_pipe_nome = (char*) malloc(sizeof(req_pipe_path) + 1);
-  resp_pipe_nome = (char*) malloc(sizeof(resp_pipe_path) + 1);
-  strncpy(req_pipe_nome, req_pipe_path, sizeof(req_pipe_path) + 1);
-  strncpy(resp_pipe_nome, resp_pipe_path, sizeof(resp_pipe_path) + 1);
+  req_pipe_nome = (char*) malloc(strlen(req_pipe_path) + 1);
+  resp_pipe_nome = (char*) malloc(strlen(resp_pipe_path) + 1);
+  strncpy(req_pipe_nome, req_pipe_path, strlen(req_pipe_path) + 1);
+  strncpy(resp_pipe_nome, resp_pipe_path, strlen(resp_pipe_path) + 1);
   ssize_t ret;
   snprintf(msg, TAMMSG, "1 %s %s \n", req_pipe_path, resp_pipe_path);
 
- 
-  
   pthread_mutex_t fifo_lock  = getlock();
-  //printf("lock:%d\n",fifo_lock);
-  int valor = geti();
-  printf("antesi:%d\n", valor);
   if (pthread_mutex_lock(&fifo_lock) != 0) {
     fprintf(stderr, "Error locking\n");
     return 1;
   }
-  printf("i:%d\n", valor);
-  seti();
   printf("ola:%s",msg);
-  ret = write(fserv, msg, sizeof(msg));
+  ret = write(fserv, msg, strlen(msg) + 1);
   if (ret < 0) {
     fprintf(stderr, "Write failed\n");
     exit(EXIT_FAILURE);
   }
   // pthread_rwlock_unlock(&fifo_lock);
 
-  read_wait(resp_pipe, buffer, 16);
-
-  req_pipe = open(req_pipe_path, O_RDWR);
-  resp_pipe = open(resp_pipe_path, O_RDWR);
+  req_pipe = open(req_pipe_path, O_WRONLY);
+  resp_pipe = open(resp_pipe_path, O_RDONLY);
   if (req_pipe == -1 || resp_pipe == -1) {
-    fprintf(stderr, "Pipe open failed\n");
+    fprintf(stderr, "api-Pipe open failed\n");
     exit(EXIT_FAILURE);
   }
+  read_wait(resp_pipe, buffer, 16);
+
   SESSION_ID = atoi(buffer);
   return 0;
 }
@@ -96,7 +89,7 @@ int ems_quit(void) {
   //TODO: close pipes
   char msg[TAMMSG];
   snprintf(msg, TAMMSG, "2");
-  ssize_t ret = write(req_pipe, msg, sizeof(msg));
+  ssize_t ret = write(req_pipe, msg, strlen(msg) + 1);
   if (ret < 0) {
     fprintf(stderr, "Write failed\n");
     exit(EXIT_FAILURE);
@@ -119,11 +112,12 @@ int ems_create(unsigned int event_id, size_t num_rows, size_t num_cols) {
   char buffer[16], msg[TAMMSG];
   ssize_t ret;
   snprintf(msg, TAMMSG, "3 %u %zu %zu\n", event_id, num_rows, num_cols);
-  ret = write(req_pipe, msg, sizeof(msg));
+  ret = write(req_pipe, msg, strlen(msg) + 1);
   if (ret < 0) {
     fprintf(stderr, "Write failed\n");
     exit(EXIT_FAILURE);
   }
+
   read_wait(resp_pipe, buffer, 16);
 
   ret = (size_t)(atoi(buffer));
@@ -144,13 +138,13 @@ int ems_reserve(unsigned int event_id, size_t num_seats, size_t* xs, size_t* ys)
     memset(seat,0,16);
   }
   
-  ret = write(req_pipe, msg, sizeof(msg));
+  ret = write(req_pipe, msg, strlen(msg));
   if (ret < 0) {
     fprintf(stderr, "Write failed\n");
     exit(EXIT_FAILURE);
   }
 
-  read_wait(resp_pipe, buffer, TAMMSG - 1);
+  read_wait(resp_pipe, buffer, TAMMSG);
 
   ret = (atoi(strtok(buffer, " ")));
 
@@ -165,13 +159,13 @@ int ems_show(int out_fd, unsigned int event_id) {
   char buffer[TAMMSG], msg[TAMMSG];
   snprintf(msg, TAMMSG, "5 %u ", event_id);
   ssize_t ret;
-  ret = write(req_pipe, msg, sizeof(msg));
+  ret = write(req_pipe, msg, strlen(msg));
   if (ret < 0) {
     fprintf(stderr, "Write failed\n");
     exit(EXIT_FAILURE);
   }
 
-  read_wait(resp_pipe, buffer, TAMMSG - 1);
+  read_wait(resp_pipe, buffer, TAMMSG);
 
   ret = (size_t)(atoi(strtok(buffer, " ")));
   if(ret != 1){
@@ -198,7 +192,7 @@ int ems_list_events(int out_fd) {
   char buffer[TAMMSG], msg[TAMMSG];
   snprintf(msg, TAMMSG, "6");
   ssize_t ret;
-  ret = write(req_pipe, msg, sizeof(msg));
+  ret = write(req_pipe, msg, strlen(msg) + 1);
   if (ret < 0) {
     fprintf(stderr, "Write failed\n");
     exit(EXIT_FAILURE);

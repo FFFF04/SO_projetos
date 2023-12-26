@@ -5,8 +5,6 @@
 #include <stddef.h>
 
 pthread_mutex_t getlock();
-int geti();
-void seti();
 
 /// Parses an unsigned integer from the given file descriptor.
 /// @param fd The file descriptor to read from.

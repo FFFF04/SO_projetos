@@ -354,7 +354,7 @@ int ems_list_events(int out_fd) {
     current = current->next;
   }
 
-  escreve = write(out_fd,msg,TAMMSG);
+  escreve = write(out_fd,msg,strlen(msg));
   if (escreve < 0) {
     fprintf(stderr, "Error writing in pipe\n");
     exit(EXIT_FAILURE);
