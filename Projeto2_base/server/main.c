@@ -52,14 +52,13 @@ void *threadfunction(void* arg){
     op = 0;
   }
   while (1){
-    char buffer[TAMMSG];
+    char buffer[TAMMSG] ;
     ssize_t ret = read(freq, buffer, TAMMSG);
     if (ret == -1) {
       fprintf(stderr, "Read failed\n");
       exit(EXIT_FAILURE);
     }
-    printf("buffer[0]: %c",buffer[0]);/////////
-    if (buffer[0] != 0)
+    if (buffer[0] == 0)
       continue; 
     int code_number = atoi(strtok(buffer, " "));
     buffer[ret] = 0;
@@ -180,7 +179,6 @@ int main(int argc, char* argv[]) {
     }
     buffer[ret] = 0;
     if (buffer[0] != 0){
-      printf("adeus:%s",buffer);
       if (pthread_mutex_lock(&g_mutex) != 0) {exit(EXIT_FAILURE);}
       while (active == S)
         pthread_cond_wait(&cond, &g_mutex);

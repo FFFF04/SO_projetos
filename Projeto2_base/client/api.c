@@ -65,7 +65,6 @@ int ems_setup(char const* req_pipe_path, char const* resp_pipe_path, char const*
     fprintf(stderr, "Error locking\n");
     return 1;
   }
-  printf("ola:%s",msg);
   ret = write(fserv, msg, strlen(msg) + 1);
   if (ret < 0) {
     fprintf(stderr, "Write failed\n");
@@ -169,16 +168,20 @@ int ems_show(int out_fd, unsigned int event_id) {
 
   ret = (size_t)(atoi(strtok(buffer, " ")));
   if(ret != 1){
-    size_t num_rows = (size_t)(atoi(strtok(NULL, " ")));
-    size_t num_columns = (size_t)(atoi(strtok(NULL, " ")));
-    char *mensagem = (char*) malloc((num_columns*num_rows)+1);
-    mensagem = strtok(NULL,"|");
-    ret = write(out_fd, mensagem, (num_columns*num_rows*2)+1);
-    if (ret == -1){
-      fprintf(stderr, "write failed\n");
-      exit(EXIT_FAILURE);
-    }
-    free(mensagem);
+    // size_t num_rows = (size_t)(atoi(strtok(NULL, " ")));
+    // size_t num_columns = (size_t)(atoi(strtok(NULL, " ")));
+    strtok(NULL, " ");
+    strtok(NULL, " ");
+    //char *mensagem = (char*) malloc(sizeof((num_columns*num_rows*2)+1));
+    char *mensagem = strtok(NULL,"|");
+    print_str(out_fd,mensagem);
+    // ret = write(out_fd, mensagem, (num_columns*num_rows*2) +1);
+    // if (ret == -1){
+    //   fprintf(stderr, "write failed\n");
+    //   exit(EXIT_FAILURE);
+    // }
+    
+    //free(mensagem);
     return 0;
   }
   return 1;
