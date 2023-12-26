@@ -28,9 +28,12 @@ pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 
 void *threadfunction(void* arg){
   data *valores = (data*) arg;
+  printf("mensagem%s\n",valores->mesg);
   int op = atoi(strtok(valores->mesg, " "));
   char* req_pipe_name = strtok(NULL, " ");
   char* resp_pipe_name = strtok(NULL, " ");
+  printf("req: %s\n",req_pipe_name);
+  printf("resp: %s\n",resp_pipe_name);
   int freq = open(req_pipe_name, O_RDONLY);
   if (freq == -1){
     fprintf(stderr, "Server open failed\n");
@@ -182,8 +185,8 @@ int main(int argc, char* argv[]) {
       while (active == S)
         pthread_cond_wait(&cond, &g_mutex);
       
-      clients[i].mesg = (char*) malloc(sizeof(buffer) + 1);
-      strncpy(clients[i].mesg, buffer,sizeof(buffer) + 1);
+      clients[i].mesg = (char*) malloc(strlen(buffer) + 1);
+      strcpy(clients[i].mesg, buffer);
       pthread_mutex_unlock(&fifo_lock);
       clients[i].session_id = i;
       if (pthread_create(&thread_id[i], NULL, &threadfunction, &clients[i]) != 0){
