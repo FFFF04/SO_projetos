@@ -183,18 +183,16 @@ int ems_show(int out_fd, unsigned int event_id) {
       fprintf(stderr, "Error writing in pipe\n");
     return 1;
   }
+
   if (pthread_rwlock_rdlock(&event_list->rwl) != 0) {
     fprintf(stderr, "Error locking list rwl\n");
     return 1;
   }
-  printf("dei lock rdlock( %d )\n",event_id);
-  fflush(stdout);
+
   struct Event* event = get_event_with_delay(event_id, event_list->head, event_list->tail);
-  printf("get_event_with_delay\n");
-  fflush(stdout);
+
   pthread_rwlock_unlock(&event_list->rwl);
-  printf("dei unlock rdlock(%d)\n",event_id);
-  fflush(stdout);
+
   if (event == NULL) {
     fprintf(stderr, "Event not found\n");
     escreve = write(out_fd,"1\n",2);
@@ -202,16 +200,16 @@ int ems_show(int out_fd, unsigned int event_id) {
       fprintf(stderr, "Error writing in pipe\n");
     return 1;
   }
+
   if (pthread_mutex_lock(&event->mutex) != 0) {
     fprintf(stderr, "Error locking mutex\n");
     return 1;
   }
+
   char msg[16];
   char buffer[TAMMSG] = {};
   sprintf(msg,"0 %zu %zu|\n ",event->rows,event->cols);
   strcat(buffer,msg);
-  // printf("ola\n");
-  // fflush(stdout);
   for (size_t i = 1; i <= event->rows; i++) {
     for (size_t j = 1; j <= event->cols; j++) {
       char buf[16];
@@ -240,16 +238,12 @@ int ems_show(int out_fd, unsigned int event_id) {
     //   return 1;
     // }
   }
-  //printf("%s",buffer);
-  // fflush(stdout);
   escreve = write(out_fd,buffer,strlen(buffer));
   if (escreve < 0) {
     fprintf(stderr, "Error writing in pipe\n");
     exit(EXIT_FAILURE);
   }
   pthread_mutex_unlock(&event->mutex);
-  printf("dei unlock\n");
-  fflush(stdout);
   return 0;
 
   /*char msg[16];
@@ -313,8 +307,7 @@ int ems_list_events(int out_fd) {
       break;
     }
     
-    if (head == tail) 
-    {
+    if (head == tail) {
       contador++;
       break;
     }
@@ -329,7 +322,7 @@ int ems_list_events(int out_fd) {
   struct ListNode* current = event_list->head;
 
   if (current == NULL) {
-    char buff[] = "No events\n|";
+    char buff[] = "No events\n";
     strcat(msg,buff);
     if (print_str(out_fd, msg)) {
       perror("Error writing to file descriptor");
@@ -342,7 +335,6 @@ int ems_list_events(int out_fd) {
   }
 
   while (1) {
-  //for (int i = 1; i <= contador; i++){
     char buff[] = "Event: ";
     strcat(msg,buff);
     // if (print_str(out_fd, buff)) {
@@ -352,7 +344,7 @@ int ems_list_events(int out_fd) {
     // }
 
     char id[16];
-    sprintf(id, "%u\n|", (current->event)->id);
+    sprintf(id, "%u|\n", (current->event)->id);
     strcat(msg,id);
     // if (print_str(out_fd, id)) {
     //   perror("Error writing to file descriptor");
@@ -366,6 +358,7 @@ int ems_list_events(int out_fd) {
 
     current = current->next;
   }
+
   escreve = write(out_fd,msg,strlen(msg));
   if (escreve < 0) {
     fprintf(stderr, "Error writing in pipe\n");
