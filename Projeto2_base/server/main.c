@@ -24,6 +24,7 @@ int active = 0;
 pthread_mutex_t g_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t read_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t show_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 
 void *threadfunction(void* arg){
@@ -41,6 +42,7 @@ void *threadfunction(void* arg){
     fprintf(stderr, "Pipe open failed\n");
     exit(EXIT_FAILURE);
   }
+  printf("thread fresp:%d\n", fresp);
   if(op == 1){
     char buffer[16] = {};
     sprintf(buffer, "%d", valores->session_id);
@@ -74,7 +76,6 @@ void *threadfunction(void* arg){
         if (pthread_mutex_unlock(&g_mutex) != 0) {
           exit(EXIT_FAILURE);
         }
-        ems_terminate();
         exit(EXIT_SUCCESS);
       case 3:
         event_id = (unsigned int)(atoi(strtok(NULL, " ")));
@@ -97,6 +98,7 @@ void *threadfunction(void* arg){
           xs[i] = (size_t)atoi(strtok(NULL, " "));
           ys[i] = (size_t)atoi(strtok(NULL, " "));
         }
+
         if(ems_reserve(event_id, num_coords, xs, ys))
           escreve = write(fresp,"1\n",2);
         else

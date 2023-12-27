@@ -1,5 +1,5 @@
 #include "eventlist.h"
-
+#include <stdio.h>/////
 #include <pthread.h>
 #include <stdlib.h>
 
@@ -59,13 +59,15 @@ void free_list(struct EventList* list) {
 struct Event* get_event(struct EventList* list, unsigned int event_id, struct ListNode* from, struct ListNode* to) {
   if (!list || !from || !to) return NULL;
   struct ListNode* current = from;
-
+  printf("while....\n");
   while (1) {
     if (current->event->id == event_id) {
+      printf("get_event:%d\n", event_id);
       return current->event;
     }
 
     if (current == to) {
+      printf("get_event\n");
       return NULL;
     }
 

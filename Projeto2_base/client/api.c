@@ -7,7 +7,6 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <errno.h>
-#include <pthread.h>
 
 #include "api.h"
 #include "common/io.h"
@@ -16,7 +15,6 @@
 int SESSION_ID, req_pipe, resp_pipe;
 char *req_pipe_nome;
 char *resp_pipe_nome;
-pthread_mutex_t g_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void read_wait(int file, char *buffer, size_t size){
   ssize_t ret = read(file, buffer, size);
@@ -87,8 +85,8 @@ int ems_setup(char const* req_pipe_path, char const* resp_pipe_path, char const*
 
 int ems_quit(void) { 
   //TODO: close pipes
-  if (pthread_mutex_lock(&g_mutex) != 0) 
-    exit(EXIT_FAILURE);
+  // if (pthread_mutex_lock(&g_mutex) != 0)
+  //   exit(EXIT_FAILURE);
   char msg[TAMMSG];
   snprintf(msg, TAMMSG, "2");
   ssize_t ret = write(req_pipe, msg, strlen(msg) + 1);
@@ -96,8 +94,8 @@ int ems_quit(void) {
     fprintf(stderr, "Write failed\n");
     exit(EXIT_FAILURE);
   }
-  if (pthread_mutex_unlock(&g_mutex) != 0) 
-      exit(EXIT_FAILURE);
+  // if (pthread_mutex_unlock(&g_mutex) != 0) 
+  //     exit(EXIT_FAILURE);
   /*FALTA DAR ERROS*/
   free(req_pipe_nome);
   free(resp_pipe_nome);
@@ -124,8 +122,8 @@ int ems_create(unsigned int event_id, size_t num_rows, size_t num_cols) {
 
   read_wait(resp_pipe, buffer, 16);
 
-  ret = (size_t)(atoi(buffer));
-  return 0;
+  int return_value = (atoi(buffer));
+  return return_value;
 }
 
 
@@ -150,9 +148,9 @@ int ems_reserve(unsigned int event_id, size_t num_seats, size_t* xs, size_t* ys)
 
   read_wait(resp_pipe, buffer, TAMMSG);
 
-  ret = (atoi(strtok(buffer, " ")));
+  int return_value = (atoi(strtok(buffer, " ")));
 
-  return 0;
+  return return_value;
 }
 
 
@@ -168,23 +166,17 @@ int ems_show(int out_fd, unsigned int event_id) {
     fprintf(stderr, "Write failed\n");
     exit(EXIT_FAILURE);
   }
-
   read_wait(resp_pipe, buffer, TAMMSG);
-
   ret = (size_t)(atoi(strtok(buffer, " ")));
   if(ret != 1){
     size_t num_rows = (size_t)(atoi(strtok(NULL, " ")));
     size_t num_columns = (size_t)(atoi(strtok(NULL, " ")));
     char *mensagem = strtok(NULL,"|");
-    if (pthread_mutex_lock(&g_mutex) != 0) 
-      exit(EXIT_FAILURE);
     ret = write(out_fd, mensagem, (num_columns*num_rows*2));
     if (ret == -1){
       fprintf(stderr, "write failed\n");
       exit(EXIT_FAILURE);
     }
-    if (pthread_mutex_unlock(&g_mutex) != 0) 
-      exit(EXIT_FAILURE);
     return 0;
   }
   return 1;
@@ -204,19 +196,22 @@ int ems_list_events(int out_fd) {
     exit(EXIT_FAILURE);
   }
 
-  read_wait(resp_pipe, buffer, TAMMSG - 1);
-
+  read_wait(resp_pipe, buffer, TAMMSG);
   ret = (atoi(strtok(buffer, " ")));
   if(ret != 1){
     size_t num_events = (size_t)(atoi(strtok(NULL, " ")));
-    char *mensagem = (char*) malloc((num_events)+1);
-    mensagem = strtok(NULL,"|");
-    ret = write(out_fd, mensagem, (num_events)+1);
-    if (ret == -1){
-      fprintf(stderr, "write failed\n");
-      exit(EXIT_FAILURE);
+    //char *mensagem = (char*) malloc((num_events)+1);
+    while(num_events != 0){
+      char *mensagem = strtok(NULL,"|");
+      ret = write(out_fd, mensagem, strlen(mensagem));
+      if (ret == -1){
+        fprintf(stderr, "write failed\n");
+        exit(EXIT_FAILURE);
+      }
+      num_events--;
+      memset(mensagem,0,strlen(mensagem));
     }
-    free(mensagem); 
+    //free(mensagem); 
     return 0;
     //unsigned int *ids = strtok(buffer, " ");///memoria
   }
