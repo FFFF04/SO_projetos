@@ -19,9 +19,7 @@ static unsigned int state_access_delay_us = 0;
 /// @return Pointer to the event if found, NULL otherwise.
 static struct Event* get_event_with_delay(unsigned int event_id, struct ListNode* from, struct ListNode* to) {
   struct timespec delay = {0, state_access_delay_us * 1000};
-  printf("       adormeci: %u\n", event_id);
   nanosleep(&delay, NULL);  // Should not be removed
-  printf("       acordei: %u\n", event_id);
   return get_event(event_list, event_id, from, to);
 }
 
@@ -62,7 +60,6 @@ int ems_terminate() {
 }
 
 int ems_create(unsigned int event_id, size_t num_rows, size_t num_cols) {
-  printf("ems_create(%u, %lu, %lu)\n",event_id, num_rows, num_cols);
   fflush(stdout);
   if (event_list == NULL) {
     fprintf(stderr, "EMS state must be initialized\n");
@@ -191,9 +188,7 @@ int ems_show(int out_fd, unsigned int event_id) {
     fprintf(stderr, "Error locking list rwl\n");
     return 1;
   }
-  printf("                   get event_id:%d\n", event_id);
   struct Event* event = get_event_with_delay(event_id, event_list->head, event_list->tail);
-  printf("                   --got event_id:%d\n", event_id);
   pthread_rwlock_unlock(&event_list->rwl);
 
   if (event == NULL) {

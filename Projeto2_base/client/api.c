@@ -64,7 +64,6 @@ int ems_setup(char const* req_pipe_path, char const* resp_pipe_path, char const*
     fprintf(stderr, "Error locking\n");
     return 1;
   }
-  printf("api write:%s\n", msg);
   ret = write(fserv, msg, strlen(msg) + 1);
   if (ret < 0) {
     fprintf(stderr, "Write failed\n");
@@ -80,7 +79,6 @@ int ems_setup(char const* req_pipe_path, char const* resp_pipe_path, char const*
     exit(EXIT_FAILURE);
   }
   read_wait(resp_pipe, buffer, 16);
-  printf("api read:%s\n", buffer);
   SESSION_ID = atoi(buffer);
   return 0;
 }
@@ -99,14 +97,12 @@ int ems_quit(void) {
   // if (pthread_mutex_unlock(&g_mutex) != 0) 
   //     exit(EXIT_FAILURE);
   /*FALTA DAR ERROS*/
-  printf("api quit before closed!! \n");
   free(req_pipe_nome);
   free(resp_pipe_nome);
   close(req_pipe);
   unlink(req_pipe_nome);
   close(resp_pipe);
   unlink(resp_pipe_nome);
-  printf("api quit after closed!! \n");
   return 0;
 }
 
@@ -119,7 +115,6 @@ int ems_create(unsigned int event_id, size_t num_rows, size_t num_cols) {
   ssize_t ret;
   snprintf(msg, TAMMSG, "3 %u %zu %zu\n", event_id, num_rows, num_cols);
   ret = write(req_pipe, msg, strlen(msg) + 1);
-  printf("api create%d: %s\n", event_id, msg);
   if (ret < 0) {
     fprintf(stderr, "Write failed\n");
     exit(EXIT_FAILURE);
@@ -146,7 +141,6 @@ int ems_reserve(unsigned int event_id, size_t num_seats, size_t* xs, size_t* ys)
   }
   
   ret = write(req_pipe, msg, strlen(msg));
-  printf("api reserve%d: %s\n",event_id, msg);
   if (ret < 0) {
     fprintf(stderr, "Write failed\n");
     exit(EXIT_FAILURE);
@@ -168,7 +162,6 @@ int ems_show(int out_fd, unsigned int event_id) {
   snprintf(msg, TAMMSG, "5 %u ", event_id);
   ssize_t ret;
   ret = write(req_pipe, msg, strlen(msg));
-  printf("api show%d: %s\n",event_id, msg);
   if (ret < 0) {
     fprintf(stderr, "Write failed\n");
     exit(EXIT_FAILURE);

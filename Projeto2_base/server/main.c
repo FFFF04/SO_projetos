@@ -68,13 +68,11 @@ void *threadfunction(void* arg){
     ssize_t escreve;
     switch (code_number) {
       case 2:
-        printf("entrei quit: \n");
         if (pthread_mutex_lock(&g_mutex) != 0) {
           exit(EXIT_FAILURE);
         }
         active--;
         pthread_cond_signal(&cond);
-        printf("sai quit: \n");
         if (pthread_mutex_unlock(&g_mutex) != 0) {
           exit(EXIT_FAILURE);
         }
@@ -82,7 +80,6 @@ void *threadfunction(void* arg){
         exit(EXIT_SUCCESS);
       case 3:
         event_id = (unsigned int)(atoi(strtok(NULL, " ")));
-        printf("entrei create: %d\n",event_id);
         size_t num_rows = (size_t)(atoi(strtok(NULL, " ")));
         size_t num_columns = (size_t)(atoi(strtok(NULL, " ")));
         if(ems_create(event_id, num_rows, num_columns))
@@ -93,11 +90,9 @@ void *threadfunction(void* arg){
           fprintf(stderr, "Error writing in pipe\n");
           exit(EXIT_FAILURE);
         }
-        printf("sai create: %d\n",event_id);
         break;
       case 4:
         event_id = (unsigned int)(atoi(strtok(NULL, " ")));
-        printf("entrei reserve: %d\n",event_id);
         size_t num_coords = (size_t)(atoi(strtok(NULL, " ")));
         size_t xs[MAX_RESERVATION_SIZE], ys[MAX_RESERVATION_SIZE];
         for (size_t i = 0; i < num_coords; i++) {
@@ -114,15 +109,10 @@ void *threadfunction(void* arg){
           exit(EXIT_FAILURE);
         }
         // fprintf(stderr, "Failed to create event\n");
-        printf("sai reserve: %d\n",event_id);
         break;
       case 5:
-        printf("entrei show: %d\n",event_id);
-        pthread_mutex_lock(&show_lock);
         event_id = (unsigned int)(atoi(strtok(NULL, " ")));
         ems_show(fresp, event_id);
-        pthread_mutex_unlock(&show_lock);
-        printf("sai show: %d\n",event_id);
         //fprintf(stderr, "Failed to show event\n");
         break;
       case 6:
@@ -186,7 +176,6 @@ int main(int argc, char* argv[]) {
     char *buffer = (char*) malloc(sizeof(char) * TAMMSG);
     memset(buffer, 0, sizeof(char) * TAMMSG);
     ssize_t ret = read(fserv, buffer, TAMMSG - 1);
-    printf("server read: %s\n", buffer);
     if (ret == -1) {
       fprintf(stderr, "Read failed\n");
       exit(EXIT_FAILURE);
