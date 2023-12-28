@@ -77,7 +77,6 @@ void *threadfunction(void* arg){
           exit(EXIT_FAILURE);
         }
         return NULL;
-        exit(EXIT_SUCCESS);
       case 3:
         event_id = (unsigned int)(atoi(strtok(NULL, " ")));
         size_t num_rows = (size_t)(atoi(strtok(NULL, " ")));
@@ -122,7 +121,7 @@ void *threadfunction(void* arg){
     }
     memset(buffer, 0, sizeof(char) * TAMMSG);
   }
-  exit(EXIT_SUCCESS);
+  return NULL;
 }
 
 
