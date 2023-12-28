@@ -72,7 +72,7 @@ void *threadfunction(void* arg){
   while (1){
     unsigned int event_id;
     char buffer[TAMMSG];
-    if(get_to_show){
+    if(get_to_show()){
       if (pthread_mutex_lock(&g_mutex) != 0) {
           exit(EXIT_FAILURE);
       }
@@ -205,7 +205,7 @@ int main(int argc, char* argv[]) {
     //TODO: Read from pipe
     if (signal(SIGINT, sig_handler) == SIG_ERR)
       exit(EXIT_FAILURE);//CTRL-C
-    if(get_to_show) 
+    if(get_to_show()) 
       break;
     char *buffer = (char*) malloc(sizeof(char) * TAMMSG);
     memset(buffer, 0, sizeof(char) * TAMMSG);
@@ -242,7 +242,7 @@ int main(int argc, char* argv[]) {
     free(buffer);
   }
 
-  ems_show_all(stdout);
+  ems_show_all(STDOUT_FILENO);
   ems_terminate();
   /*QUANDO O SERVIDOR ESTA CHEIO ENTAO FAZEMOS PTHREAD_WAIT QUE IRA FAZER ESPERAR ATE QUE UM
   CLIENTE SAIA DO SERVIDOR, QUANDO UM CLIENTE SAI ENTAO FAZEMOS SIGNEL PARA PODER ENTRAR OUTRO BACANO*/

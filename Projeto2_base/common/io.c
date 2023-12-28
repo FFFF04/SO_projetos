@@ -7,8 +7,17 @@
 #include <pthread.h>
 
 pthread_mutex_t fifo_lock = PTHREAD_MUTEX_INITIALIZER;
+int to_show = 0;
 pthread_mutex_t getlock(){
   return fifo_lock;
+}
+
+int get_to_show(){
+  return to_show;
+}
+
+void set_to_show(){
+  to_show = 1;
 }
 
 int parse_uint(int fd, unsigned int *value, char *next) {
