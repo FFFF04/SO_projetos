@@ -85,17 +85,15 @@ int ems_setup(char const* req_pipe_path, char const* resp_pipe_path, char const*
 
 int ems_quit(void) { 
   //TODO: close pipes
-  // if (pthread_mutex_lock(&g_mutex) != 0)
-  //   exit(EXIT_FAILURE);
-  char msg[TAMMSG];
-  snprintf(msg, TAMMSG, "2");
-  ssize_t ret = write(req_pipe, msg, strlen(msg) + 1);
-  if (ret < 0) {
-    fprintf(stderr, "Write failed\n");
-    exit(EXIT_FAILURE);
+  if(!get_to_show()){
+    char msg[TAMMSG];
+    snprintf(msg, TAMMSG, "2");
+    ssize_t ret = write(req_pipe, msg, strlen(msg) + 1);
+    if (ret < 0) {
+      fprintf(stderr, "Write failed\n");
+      exit(EXIT_FAILURE);
+    }
   }
-  // if (pthread_mutex_unlock(&g_mutex) != 0) 
-  //     exit(EXIT_FAILURE);
   /*FALTA DAR ERROS*/
   free(req_pipe_nome);
   free(resp_pipe_nome);

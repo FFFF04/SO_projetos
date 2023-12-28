@@ -5,7 +5,8 @@
 #include <stddef.h>
 
 pthread_mutex_t getlock();
-
+int get_to_show();
+int set_to_show();
 /// Parses an unsigned integer from the given file descriptor.
 /// @param fd The file descriptor to read from.
 /// @param value Pointer to the variable to store the value in.

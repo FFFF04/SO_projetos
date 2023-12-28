@@ -47,7 +47,12 @@ int main(int argc, char* argv[]) {
     size_t num_rows, num_columns, num_coords;
     unsigned int delay = 0;
     size_t xs[MAX_RESERVATION_SIZE], ys[MAX_RESERVATION_SIZE];
-
+    if(get_to_show()){
+      close(in_fd);
+      close(out_fd);
+      ems_quit();
+      return 0;
+    }
     switch (get_next(in_fd)) {
       case CMD_CREATE:
         if (parse_create(in_fd, &event_id, &num_rows, &num_columns) != 0) {

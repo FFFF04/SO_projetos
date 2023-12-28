@@ -8,7 +8,7 @@
 #include <errno.h>
 #include <string.h>
 #include <pthread.h>
-
+#include <signal.h>
 #include "common/constants.h"
 #include "common/io.h"
 #include "operations.h"
@@ -27,7 +27,21 @@ pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t show_lock = PTHREAD_MUTEX_INITIALIZER;
 
 
+static void sig_handler(int sig) {
+  if (sig == SIGINT) {
+    if (signal(SIGINT, sig_handler) == SIG_ERR)
+      exit(EXIT_FAILURE);
+    set_to_show();
+  }
+}
+
+
 void *threadfunction(void* arg){
+  sigset_t new_mask;
+  sigemptyset(&new_mask); // Initialize an empty signal set
+  sigaddset(&new_mask, SIGUSR1); // Add SIGUSR1 to the signal set
+  // Block SIGUSR1 in this thread
+  pthread_sigmask(SIG_BLOCK, &new_mask, NULL);
   data *valores = (data*) arg;
   int op = atoi(strtok(valores->mesg, " "));
   char* req_pipe_name = strtok(NULL, " ");
@@ -54,17 +68,32 @@ void *threadfunction(void* arg){
     op = 0;
   }
   while (1){
-    char buffer[TAMMSG] ;
+    unsigned int event_id;
+    char buffer[TAMMSG];
+    if(get_to_show){
+      if (pthread_mutex_lock(&g_mutex) != 0) {
+          exit(EXIT_FAILURE);
+      }
+      active--;
+      pthread_cond_signal(&cond);
+      if (pthread_mutex_unlock(&g_mutex) != 0) {
+        exit(EXIT_FAILURE);
+      }
+      break;
+    }
     ssize_t ret = read(freq, buffer, TAMMSG);
     if (ret == -1) {
       fprintf(stderr, "Read failed\n");
       exit(EXIT_FAILURE);
     }
     if (buffer[0] == 0)
-      continue; 
+      continue;
+    
     int code_number = atoi(strtok(buffer, " "));
+    // if(code_number>2 &&code_number < 6){
+    //   event_id = (unsigned int)(atoi(strtok(NULL, " ")));
+    // }
     buffer[ret] = 0;
-    unsigned int event_id;
     ssize_t escreve;
     switch (code_number) {
       case 2:
@@ -172,6 +201,10 @@ int main(int argc, char* argv[]) {
   pthread_mutex_t fifo_lock  = getlock();
   while (1) {
     //TODO: Read from pipe
+    if (signal(SIGINT, sig_handler) == SIG_ERR)
+      exit(EXIT_FAILURE);//CTRL-C
+    if(get_to_show) 
+      break;
     char *buffer = (char*) malloc(sizeof(char) * TAMMSG);
     memset(buffer, 0, sizeof(char) * TAMMSG);
     ssize_t ret = read(fserv, buffer, TAMMSG - 1);
@@ -206,7 +239,9 @@ int main(int argc, char* argv[]) {
     //TODO: Write new client to the producer-consumer buffer
     free(buffer);
   }
-  
+
+  show_all(stdout);
+  ems_terminate();
   /*QUANDO O SERVIDOR ESTA CHEIO ENTAO FAZEMOS PTHREAD_WAIT QUE IRA FAZER ESPERAR ATE QUE UM
   CLIENTE SAIA DO SERVIDOR, QUANDO UM CLIENTE SAI ENTAO FAZEMOS SIGNEL PARA PODER ENTRAR OUTRO BACANO*/
 

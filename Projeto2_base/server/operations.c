@@ -204,10 +204,18 @@ int ems_show(int out_fd, unsigned int event_id) {
     return 1;
   }
 
-  char msg[16];
+  
   char buffer[TAMMSG] = {};
-  sprintf(msg,"0 %zu %zu|\n ",event->rows,event->cols);
-  strcat(buffer,msg);
+  if(out_fd != 1){
+    char msg[16];
+    sprintf(msg,"0 %zu %zu|\n ",event->rows,event->cols);
+    strcat(buffer,msg);
+  }
+  else{
+    char msg[16];
+    sprintf(msg,"Event: %u\n",event_id);
+    strcat(buffer,msg);
+  }
   for (size_t i = 1; i <= event->rows; i++) {
     for (size_t j = 1; j <= event->cols; j++) {
       char buf[16];
@@ -365,4 +373,29 @@ int ems_list_events(int out_fd) {
 
   pthread_rwlock_unlock(&event_list->rwl);
   return 0;
+}
+
+void ems_show_all(int out_fd){
+  char msg[TAMMSG] = {};
+  if (pthread_rwlock_rdlock(&event_list->rwl) != 0) {
+    fprintf(stderr, "Error locking list rwl\n");
+    return 1;
+  }
+  struct ListNode* tail = event_list->tail;
+  struct ListNode* head = event_list->head;
+  if (head == NULL) {
+    char buff[] = "No events\n";
+    strcat(msg,buff);
+  }
+  else{
+    while (1) {
+      struct ListNode* current = event_list->head;
+      ems_show(out_fd, current->event->id);
+      if (head == tail) {
+        break;
+      }
+      head = head->next;
+    }
+  }
+  pthread_rwlock_unlock(&event_list->rwl);
 }
