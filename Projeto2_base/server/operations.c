@@ -379,7 +379,7 @@ void ems_show_all(int out_fd){
   char msg[TAMMSG] = {};
   if (pthread_rwlock_rdlock(&event_list->rwl) != 0) {
     fprintf(stderr, "Error locking list rwl\n");
-    return 1;
+    //return 1;
   }
   struct ListNode* tail = event_list->tail;
   struct ListNode* head = event_list->head;

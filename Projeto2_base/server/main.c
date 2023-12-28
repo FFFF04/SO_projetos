@@ -240,7 +240,7 @@ int main(int argc, char* argv[]) {
     free(buffer);
   }
 
-  show_all(stdout);
+  ems_show_all(stdout);
   ems_terminate();
   /*QUANDO O SERVIDOR ESTA CHEIO ENTAO FAZEMOS PTHREAD_WAIT QUE IRA FAZER ESPERAR ATE QUE UM
   CLIENTE SAIA DO SERVIDOR, QUANDO UM CLIENTE SAI ENTAO FAZEMOS SIGNEL PARA PODER ENTRAR OUTRO BACANO*/
