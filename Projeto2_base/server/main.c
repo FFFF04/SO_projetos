@@ -9,6 +9,8 @@
 #include <string.h>
 #include <pthread.h>
 #include <signal.h>
+
+#include "common/io.h"
 #include "common/constants.h"
 #include "common/io.h"
 #include "operations.h"
