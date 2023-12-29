@@ -44,6 +44,7 @@ void *threadfunction(void* arg){
   sigaddset(&new_mask, SIGUSR1); // Add SIGUSR1 to the signal set
   // Block SIGUSR1 in this thread
   pthread_sigmask(SIG_BLOCK, &new_mask, NULL);
+
   data *valores = (data*) arg;
   int op = atoi(strtok(valores->mesg, " "));
   char* req_pipe_name = strtok(NULL, " ");
@@ -197,18 +198,18 @@ int main(int argc, char* argv[]) {
     fprintf(stderr, "Server open failed\n");
     exit(EXIT_FAILURE);
   }
-  data clients[S + 1];
-  pthread_t thread_id[S + 1];
+  data clients[S];
+  pthread_t thread_id[S];
   int i = 0;
-  pthread_mutex_t fifo_lock  = getlock();
+  pthread_mutex_t fifo_lock = getlock();
   while (1) {
     //TODO: Read from pipe
     if (signal(SIGINT, sig_handler) == SIG_ERR)
       exit(EXIT_FAILURE);//CTRL-C
     if(get_to_show()) 
       break;
-    char *buffer = (char*) malloc(sizeof(char) * TAMMSG);
-    memset(buffer, 0, sizeof(char) * TAMMSG);
+    char *buffer = (char*) malloc(TAMMSG);
+    memset(buffer, 0, TAMMSG);
     ssize_t ret = read(fserv, buffer, TAMMSG - 1);
     if (ret == -1) {
       fprintf(stderr, "Read failed\n");
@@ -217,9 +218,9 @@ int main(int argc, char* argv[]) {
     buffer[ret] = 0;
     if (buffer[0] != 0){
       if (pthread_mutex_lock(&g_mutex) != 0) {exit(EXIT_FAILURE);}
-      while (active == S)
+      while (active == S){
         pthread_cond_wait(&cond, &g_mutex);
-      
+      }
       memset(clients[i].mesg,0,strlen(clients[i].mesg)); 
       strncpy(clients[i].mesg, buffer,strlen(buffer) + 1);
       pthread_mutex_unlock(&fifo_lock);
