@@ -17,7 +17,7 @@
 
 typedef struct{
   int session_id;
-  char *mesg;
+  char mesg[84];
 }data;
 
 
@@ -220,8 +220,8 @@ int main(int argc, char* argv[]) {
       while (active == S)
         pthread_cond_wait(&cond, &g_mutex);
       
-      clients[i].mesg = (char*) malloc(strlen(buffer) + 1);
-      strcpy(clients[i].mesg, buffer);
+      memset(clients[i].mesg,0,strlen(clients[i].mesg)); 
+      strncpy(clients[i].mesg, buffer,strlen(buffer) + 1);
       pthread_mutex_unlock(&fifo_lock);
       clients[i].session_id = i;
       if (pthread_create(&thread_id[i], NULL, &threadfunction, &clients[i]) != 0){
@@ -244,11 +244,8 @@ int main(int argc, char* argv[]) {
 
   ems_show_all(STDOUT_FILENO);
   ems_terminate();
-  /*QUANDO O SERVIDOR ESTA CHEIO ENTAO FAZEMOS PTHREAD_WAIT QUE IRA FAZER ESPERAR ATE QUE UM
-  CLIENTE SAIA DO SERVIDOR, QUANDO UM CLIENTE SAI ENTAO FAZEMOS SIGNEL PARA PODER ENTRAR OUTRO BACANO*/
 
   //TODO: Close Server
   close(fserv);
   unlink(pipe_name);
-  ems_terminate();
 }

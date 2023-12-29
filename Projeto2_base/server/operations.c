@@ -376,21 +376,24 @@ int ems_list_events(int out_fd) {
 }
 
 void ems_show_all(int out_fd){
-  char msg[TAMMSG] = {};
+  // char msg[TAMMSG] = {};
   if (pthread_rwlock_rdlock(&event_list->rwl) != 0) {
     fprintf(stderr, "Error locking list rwl\n");
-    //return 1;
+    return;
   }
   struct ListNode* tail = event_list->tail;
   struct ListNode* head = event_list->head;
   if (head == NULL) {
     char buff[] = "No events\n";
-    strcat(msg,buff);
+    ssize_t escreve = write(out_fd,buff,strlen(buff));
+    if (escreve < 0) {
+      fprintf(stderr, "Error writing in pipe\n");
+      exit(EXIT_FAILURE);
+    }
   }
   else{
     while (1) {
-      struct ListNode* current = event_list->head;
-      ems_show(out_fd, current->event->id);
+      ems_show(out_fd, head->event->id);
       if (head == tail) {
         break;
       }

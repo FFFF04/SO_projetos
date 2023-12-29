@@ -95,12 +95,12 @@ int ems_quit(void) {
     }
   }
   /*FALTA DAR ERROS*/
+  close(req_pipe);
+  close(resp_pipe);
+  unlink(req_pipe_nome);
+  unlink(resp_pipe_nome);
   free(req_pipe_nome);
   free(resp_pipe_nome);
-  close(req_pipe);
-  unlink(req_pipe_nome);
-  close(resp_pipe);
-  unlink(resp_pipe_nome);
   return 0;
 }
 
