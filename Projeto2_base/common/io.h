@@ -4,7 +4,12 @@
 #include <pthread.h>
 #include <stddef.h>
 
-pthread_mutex_t getlock();
+// void initialize_lock();
+// void lock_lock();
+// void lock_unlock();
+void initialize();
+void lock(int file_descriptor);
+void unlock(int file_descriptor);
 int get_to_show();
 void set_to_show();
 /// Parses an unsigned integer from the given file descriptor.

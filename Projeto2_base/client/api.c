@@ -59,19 +59,15 @@ int ems_setup(char const* req_pipe_path, char const* resp_pipe_path, char const*
   ssize_t ret;
   snprintf(msg, TAMMSG, "1 %s %s \n", req_pipe_path, resp_pipe_path);
 
-  pthread_mutex_t fifo_lock  = getlock();
-  if (pthread_mutex_lock(&fifo_lock) != 0) {
-    fprintf(stderr, "Error locking\n");
-    return 1;
-  }
+  // lock_lock();
+  lock(fserv);
+
   printf("%s",msg);
   ret = write(fserv, msg, strlen(msg) + 1);
   if (ret < 0) {
     fprintf(stderr, "Write failed\n");
     exit(EXIT_FAILURE);
   }
-  // unlock_fifo()
-  // pthread_rwlock_unlock(&fifo_lock);
 
   req_pipe = open(req_pipe_path, O_WRONLY);
   resp_pipe = open(resp_pipe_path, O_RDONLY);
@@ -80,8 +76,9 @@ int ems_setup(char const* req_pipe_path, char const* resp_pipe_path, char const*
     exit(EXIT_FAILURE);
   }
   read_wait(resp_pipe, buffer, 16);
-  //pthread_mutex_unlock(&fifo_lock);
   SESSION_ID = atoi(buffer);
+  unlock(fserv);
+  printf("adues\n");
   return 0;
 }
 

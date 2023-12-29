@@ -12,7 +12,6 @@
 
 #include "common/io.h"
 #include "common/constants.h"
-#include "common/io.h"
 #include "operations.h"
 
 typedef struct{
@@ -24,6 +23,7 @@ char *prod_consumidor;
 int S = MAX_SESSION_COUNT;
 int active = 0;
 int enter_session = -1;
+int fserv;
 pthread_mutex_t g_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t read_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
@@ -61,13 +61,11 @@ void *threadfunction(void* arg){
   while(enter_session != valores->session_id){
     pthread_cond_wait(&sessions, &valores->session_lock);
   }
-  pthread_mutex_lock(&buffer_lock);
   printf("ola1\n");
-  pthread_mutex_unlock(&valores->session_lock);
-  
-  printf("ola2\n");
-  // memset(prod_consumidor, 0, strlen(prod_consumidor));
+
   int op = atoi(strtok(prod_consumidor, " "));
+  // lock_unlock();
+  unlock(fserv);
   req_pipe_name = strtok(NULL, " ");
   resp_pipe_name = strtok(NULL, " ");
   
@@ -78,7 +76,7 @@ void *threadfunction(void* arg){
   }
   fresp = open(resp_pipe_name, O_WRONLY);
   if (fresp == -1){
-    fprintf(stderr, "aduesPipe open failed\n");
+    fprintf(stderr, "Pipe open failed\n");
     exit(EXIT_FAILURE);
   }
   if(op == 1){
@@ -92,7 +90,7 @@ void *threadfunction(void* arg){
     op = 0;
   }
   memset(prod_consumidor, 0, 84 + 1);
-  pthread_mutex_unlock(&buffer_lock);
+  // pthread_mutex_unlock(&buffer_lock);
   while (1){
     unsigned int event_id;
     char buffer[TAMMSG];
@@ -185,7 +183,6 @@ int main(int argc, char* argv[]) {
   }
   char *pipe_name = "";
   char* endptr;
-  int fserv;
 
   unsigned int state_access_delay_us = STATE_ACCESS_DELAY_US;
   if (argc == 3) {
@@ -221,12 +218,10 @@ int main(int argc, char* argv[]) {
   }
   data clients[S];
   pthread_t thread_id[S];
-  // int i = 0;
-  pthread_mutex_t fifo_lock = getlock();
-  pthread_mutex_lock(&buffer_lock);
+  // initialize_lock();
+  initialize();
   prod_consumidor = (char*) malloc(84+1);
   memset(prod_consumidor, 0, 84+1);
-  pthread_mutex_unlock(&buffer_lock);
   for (int k = 0; k < S; k++){
     clients[k].session_id = k;
     pthread_mutex_init(&clients[k].session_lock, NULL); ///DAR ERRO
@@ -243,15 +238,13 @@ int main(int argc, char* argv[]) {
       exit(EXIT_FAILURE);//CTRL-C
     if(get_to_show()) 
       break;
-    pthread_mutex_lock(&buffer_lock);
-    //pthread_mutex_lock(&fifo_lock);
+    if(!pthread_mutex_trylock(&buffer_lock)) continue;
     ssize_t ret = read(fserv, prod_consumidor,84 + 1);
     if (ret == -1) {
       fprintf(stderr, "Read failed\n");
       exit(EXIT_FAILURE);
     }
     char cliente = prod_consumidor[0];
-    pthread_mutex_unlock(&buffer_lock);
     if (cliente != 0){
       if (pthread_mutex_lock(&g_mutex) != 0) 
         exit(EXIT_FAILURE);
@@ -261,17 +254,10 @@ int main(int argc, char* argv[]) {
       printf("main: %s",prod_consumidor);
       enter_session = (enter_session + 1) % S;
       pthread_cond_broadcast(&sessions);
-      pthread_mutex_unlock(&fifo_lock);
-      // clients[i].session_id = i;
-      // if (pthread_create(&thread_id[i], NULL, &threadfunction, &clients[i]) != 0){
-      //   fprintf(stderr, "Failed to create thread\n");
-      //   exit(EXIT_FAILURE);
-      // }
       active++;
       if (pthread_mutex_unlock(&g_mutex) != 0) {
         exit(EXIT_FAILURE);
       }
-      // i = (i+1) % S;
     }
     //TODO: Write new client to the producer-consumer buffer
   }
