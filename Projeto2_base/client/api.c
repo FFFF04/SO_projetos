@@ -64,6 +64,7 @@ int ems_setup(char const* req_pipe_path, char const* resp_pipe_path, char const*
     fprintf(stderr, "Error locking\n");
     return 1;
   }
+  printf("%s",msg);
   ret = write(fserv, msg, strlen(msg) + 1);
   if (ret < 0) {
     fprintf(stderr, "Write failed\n");
@@ -79,6 +80,7 @@ int ems_setup(char const* req_pipe_path, char const* resp_pipe_path, char const*
     exit(EXIT_FAILURE);
   }
   read_wait(resp_pipe, buffer, 16);
+  //pthread_mutex_unlock(&fifo_lock);
   SESSION_ID = atoi(buffer);
   return 0;
 }

@@ -17,16 +17,20 @@
 
 typedef struct{
   int session_id;
-  char mesg[84];
+  pthread_mutex_t session_lock;
 }data;
 
-
+char *prod_consumidor;
 int S = MAX_SESSION_COUNT;
 int active = 0;
+int enter_session = -1;
 pthread_mutex_t g_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t read_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+pthread_cond_t sessions = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t show_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t buffer_lock = PTHREAD_MUTEX_INITIALIZER;
+
 
 
 static void sig_handler(int sig) {
@@ -37,39 +41,58 @@ static void sig_handler(int sig) {
   }
 }
 
-
+//FALTA DA ERROS
 void *threadfunction(void* arg){
+  char* req_pipe_name;
+  char* resp_pipe_name;
+  int fresp , freq;
   sigset_t new_mask;
   sigemptyset(&new_mask); // Initialize an empty signal set
   sigaddset(&new_mask, SIGUSR1); // Add SIGUSR1 to the signal set
   // Block SIGUSR1 in this thread
   pthread_sigmask(SIG_BLOCK, &new_mask, NULL);
 
+  if(pthread_detach(pthread_self()) != 0){
+    fprintf(stderr, "Failed to detach thread\n");
+    exit(EXIT_FAILURE);
+  }
+
   data *valores = (data*) arg;
-  int op = atoi(strtok(valores->mesg, " "));
-  char* req_pipe_name = strtok(NULL, " ");
-  char* resp_pipe_name = strtok(NULL, " ");
-  int freq = open(req_pipe_name, O_RDONLY);
+  while(enter_session != valores->session_id){
+    pthread_cond_wait(&sessions, &valores->session_lock);
+  }
+  pthread_mutex_lock(&buffer_lock);
+  printf("ola1\n");
+  pthread_mutex_unlock(&valores->session_lock);
+  
+  printf("ola2\n");
+  // memset(prod_consumidor, 0, strlen(prod_consumidor));
+  int op = atoi(strtok(prod_consumidor, " "));
+  req_pipe_name = strtok(NULL, " ");
+  resp_pipe_name = strtok(NULL, " ");
+  
+  freq = open(req_pipe_name, O_RDONLY);
   if (freq == -1){
     fprintf(stderr, "Pipe open failed\n");
     exit(EXIT_FAILURE);
   }
-  int fresp = open(resp_pipe_name, O_WRONLY);
+  fresp = open(resp_pipe_name, O_WRONLY);
   if (fresp == -1){
-    fprintf(stderr, "Pipe open failed\n");
+    fprintf(stderr, "aduesPipe open failed\n");
     exit(EXIT_FAILURE);
   }
   if(op == 1){
     char buffer[16] = {};
     sprintf(buffer, "%d", valores->session_id);
     ssize_t ret = write(fresp, buffer, strlen(buffer) + 1);
-    
     if (ret < 0) {
       fprintf(stderr, "Write failed\n");
       exit(EXIT_FAILURE);
     }
     op = 0;
   }
+  memset(prod_consumidor, 0, 84 + 1);
+  pthread_mutex_unlock(&buffer_lock);
   while (1){
     unsigned int event_id;
     char buffer[TAMMSG];
@@ -93,9 +116,6 @@ void *threadfunction(void* arg){
       continue;
     
     int code_number = atoi(strtok(buffer, " "));
-    // if(code_number>2 &&code_number < 6){
-    //   event_id = (unsigned int)(atoi(strtok(NULL, " ")));
-    // }
     buffer[ret] = 0;
     ssize_t escreve;
     switch (code_number) {
@@ -150,8 +170,9 @@ void *threadfunction(void* arg){
         ems_list_events(fresp);
           //fprintf(stderr, "Failed to list events\n");
         break;
+      default:
+        memset(buffer, 0, TAMMSG);
     }
-    memset(buffer, 0, sizeof(char) * TAMMSG);
   }
   return NULL;
 }
@@ -200,52 +221,64 @@ int main(int argc, char* argv[]) {
   }
   data clients[S];
   pthread_t thread_id[S];
-  int i = 0;
+  // int i = 0;
   pthread_mutex_t fifo_lock = getlock();
+  pthread_mutex_lock(&buffer_lock);
+  prod_consumidor = (char*) malloc(84+1);
+  memset(prod_consumidor, 0, 84+1);
+  pthread_mutex_unlock(&buffer_lock);
+  for (int k = 0; k < S; k++){
+    clients[k].session_id = k;
+    pthread_mutex_init(&clients[k].session_lock, NULL); ///DAR ERRO
+    pthread_mutex_lock(&clients[k].session_lock);
+    if (pthread_create(&thread_id[k], NULL, &threadfunction, &clients[k]) != 0){
+      fprintf(stderr, "Failed to create thread\n");
+      exit(EXIT_FAILURE);
+    }
+  }
+  
   while (1) {
     //TODO: Read from pipe
     if (signal(SIGINT, sig_handler) == SIG_ERR)
       exit(EXIT_FAILURE);//CTRL-C
     if(get_to_show()) 
       break;
-    char *buffer = (char*) malloc(TAMMSG);
-    memset(buffer, 0, TAMMSG);
-    ssize_t ret = read(fserv, buffer, TAMMSG - 1);
+    pthread_mutex_lock(&buffer_lock);
+    //pthread_mutex_lock(&fifo_lock);
+    ssize_t ret = read(fserv, prod_consumidor,84 + 1);
     if (ret == -1) {
       fprintf(stderr, "Read failed\n");
       exit(EXIT_FAILURE);
     }
-    buffer[ret] = 0;
-    if (buffer[0] != 0){
-      if (pthread_mutex_lock(&g_mutex) != 0) {exit(EXIT_FAILURE);}
-      while (active == S){
-        pthread_cond_wait(&cond, &g_mutex);
-      }
-      memset(clients[i].mesg,0,strlen(clients[i].mesg)); 
-      strncpy(clients[i].mesg, buffer,strlen(buffer) + 1);
-      pthread_mutex_unlock(&fifo_lock);
-      clients[i].session_id = i;
-      if (pthread_create(&thread_id[i], NULL, &threadfunction, &clients[i]) != 0){
-        fprintf(stderr, "Failed to create thread\n");
+    char cliente = prod_consumidor[0];
+    pthread_mutex_unlock(&buffer_lock);
+    if (cliente != 0){
+      if (pthread_mutex_lock(&g_mutex) != 0) 
         exit(EXIT_FAILURE);
-      }
+      
+      while (active == S)
+        pthread_cond_wait(&cond, &g_mutex);
+      printf("main: %s",prod_consumidor);
+      enter_session = (enter_session + 1) % S;
+      pthread_cond_broadcast(&sessions);
+      pthread_mutex_unlock(&fifo_lock);
+      // clients[i].session_id = i;
+      // if (pthread_create(&thread_id[i], NULL, &threadfunction, &clients[i]) != 0){
+      //   fprintf(stderr, "Failed to create thread\n");
+      //   exit(EXIT_FAILURE);
+      // }
       active++;
       if (pthread_mutex_unlock(&g_mutex) != 0) {
         exit(EXIT_FAILURE);
       }
-      if(pthread_detach(thread_id[i]) != 0){
-        fprintf(stderr, "Failed to detach thread\n");
-        exit(EXIT_FAILURE);
-      }
-      i = (i+1) % S;
+      // i = (i+1) % S;
     }
     //TODO: Write new client to the producer-consumer buffer
-    free(buffer);
   }
 
   ems_show_all(STDOUT_FILENO);
   ems_terminate();
-
+  free(prod_consumidor);
   //TODO: Close Server
   close(fserv);
   unlink(pipe_name);
