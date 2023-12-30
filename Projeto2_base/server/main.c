@@ -17,6 +17,7 @@
 
 typedef struct{
   int session_id;
+  char *mensagem;
   pthread_mutex_t session_lock;
 }data;
 
@@ -29,7 +30,7 @@ pthread_mutex_t g_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t read_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 pthread_cond_t sessions = PTHREAD_COND_INITIALIZER;
-// pthread_mutex_t show_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t sessions_mutex = PTHREAD_MUTEX_INITIALIZER;
 // pthread_mutex_t buffer_lock = PTHREAD_MUTEX_INITIALIZER;
 
 
@@ -63,16 +64,12 @@ void *threadfunction(void* arg){
       return NULL;
     pthread_cond_wait(&sessions, &valores->session_lock);
   }
-  printf("ola1\n");
-
-  int op = atoi(strtok(prod_consumidor, " "));
-  // lock_unlock();
- 
+  printf("%d\n",valores->session_id);
+  int op = atoi(strtok(valores->mensagem, " "));
   req_pipe_name = strtok(NULL, " "); 
+  printf("%s\n",req_pipe_name);
   resp_pipe_name = strtok(NULL, " ");
-  memset(prod_consumidor, 0, 84 + 1);
-  // pthread_mutex_unlock(&buffer_lock);
-  // unlock(fserv);
+  printf("%s\n",resp_pipe_name);
   freq = open(req_pipe_name, O_RDONLY);
   fresp = open(resp_pipe_name, O_WRONLY);
   if (freq == -1 || fresp == -1){
@@ -173,6 +170,29 @@ void *threadfunction(void* arg){
 }
 
 
+
+
+
+
+void read_msg(int file, size_t size) {
+  size_t reads = 0;
+  char msg[84] = {};
+  // char buff[1] = {};
+  while (reads < size) {
+    ssize_t ret = read(file, msg - reads, size - reads);
+    if (ret < 0) {
+      fprintf(stderr, "Read failed\n");
+      exit(EXIT_FAILURE);
+    }
+    reads += (size_t)(ret);
+  }
+  strcpy(prod_consumidor,msg);
+}
+
+
+
+
+
 int main(int argc, char* argv[]) {
   if (argc < 2 || argc > 3) {
     fprintf(stderr, "Usage: %s\n <pipe_path> [delay]\n", argv[0]);
@@ -215,10 +235,8 @@ int main(int argc, char* argv[]) {
   }
   data clients[S];
   pthread_t thread_id[S];
-  // initialize_lock();
-  // initialize();
-  prod_consumidor = (char*) malloc(84+1);
-  memset(prod_consumidor, 0, 84+1);
+  prod_consumidor = (char*) malloc(84);
+  // memset(prod_consumidor, 0, 84);
   for (int k = 0; k < S; k++){
     clients[k].session_id = k;
     pthread_mutex_init(&clients[k].session_lock, NULL); ///DAR ERRO
@@ -228,20 +246,22 @@ int main(int argc, char* argv[]) {
       exit(EXIT_FAILURE);
     }
   }
-  
   while (1) {
     //TODO: Read from pipe
     if (signal(SIGINT, sig_handler) == SIG_ERR)
       exit(EXIT_FAILURE);//CTRL-C
     if(get_to_show()) 
       break;
-    // if(!pthread_mutex_trylock(&buffer_lock)) continue;
-    ssize_t ret = read(fserv, prod_consumidor,84-1);
-    if (ret == -1) {
-      fprintf(stderr, "Read failed\n");
-      exit(EXIT_FAILURE);
-    }
-    if (prod_consumidor[0]!= 0){
+    
+    read_msg(fserv,83);
+    // ssize_t ret = read(fserv, prod_consumidor,TAMMSG);
+    // if (ret == -1) {
+    //   fprintf(stderr, "Read failed\n");
+    //   exit(EXIT_FAILURE);
+    // }
+    
+    if (prod_consumidor[0] != 0){
+      
       if (pthread_mutex_lock(&g_mutex) != 0) 
         exit(EXIT_FAILURE);
       
@@ -250,17 +270,25 @@ int main(int argc, char* argv[]) {
           break;
         pthread_cond_wait(&cond, &g_mutex);
       }
-      printf("main: %s",prod_consumidor);
+      if (pthread_mutex_lock(&sessions_mutex) != 0) 
+        exit(EXIT_FAILURE);
       enter_session = (enter_session + 1) % S;
+      printf("enter_session: %d\n",enter_session);
+      clients[enter_session].mensagem = (char *) malloc(84);
+      strcpy(clients[enter_session].mensagem,prod_consumidor);
+      printf("main: %s\n",clients[enter_session].mensagem);
       pthread_cond_broadcast(&sessions);
+      if (pthread_mutex_unlock(&sessions_mutex) != 0) 
+        exit(EXIT_FAILURE);
+      
       active++;
       if (pthread_mutex_unlock(&g_mutex) != 0) {
         exit(EXIT_FAILURE);
       }
+      memset(prod_consumidor, 0, 84);
     }
     //TODO: Write new client to the producer-consumer buffer
   }
-  printf("hi1\n");
   ems_show_all(STDOUT_FILENO);
   ems_terminate();
   free(prod_consumidor);

@@ -67,10 +67,7 @@ int ems_setup(char const* req_pipe_path, char const* resp_pipe_path, char const*
     fprintf(stderr, "mkfifo failed\n");
     exit(EXIT_FAILURE);
   } 
-  // 
-  
-  // memset(msg, ' ', sizeof(msg)); 
-  // printf("%s ola\n",msg);
+
   req_pipe_nome = (char*) malloc(strlen(req_pipe_path) + 1);
   resp_pipe_nome = (char*) malloc(strlen(resp_pipe_path) + 1);
   strncpy(req_pipe_nome, req_pipe_path, strlen(req_pipe_path) + 1);
@@ -82,7 +79,8 @@ int ems_setup(char const* req_pipe_path, char const* resp_pipe_path, char const*
       return 1;
   }
   memset(msg + chars_written, ' ', (size_t)(MSG_SIZE - chars_written - 1));
-  msg[MSG_SIZE-1] = '\0';
+  // printf("%s\n",msg);
+  // msg[MSG_SIZE-1] = '\0';
   send_msg(fserv, msg);
 
   req_pipe = open(req_pipe_path, O_WRONLY);
@@ -91,9 +89,9 @@ int ems_setup(char const* req_pipe_path, char const* resp_pipe_path, char const*
     fprintf(stderr, "api-Pipe open failed\n");
     exit(EXIT_FAILURE);
   }
-  read_wait(resp_pipe, buffer, 16);
+  // read_wait(resp_pipe, buffer, 16);
+  read(resp_pipe,buffer,16);
   SESSION_ID = atoi(buffer);
-  printf("adues\n");
   return 0;
 }
 
