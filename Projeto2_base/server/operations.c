@@ -377,6 +377,13 @@ int ems_list_events(int out_fd) {
 
 void ems_show_all(int out_fd){
   // char msg[TAMMSG] = {};
+  printf("hi\n");
+  if (event_list == NULL) {
+    ssize_t escreve = write(out_fd,"1\n",2);
+    if (escreve < 0)
+      fprintf(stderr, "Error writing in pipe\n");
+    return;
+  }
   if (pthread_rwlock_rdlock(&event_list->rwl) != 0) {
     fprintf(stderr, "Error locking list rwl\n");
     return;

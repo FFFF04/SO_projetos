@@ -1,15 +1,7 @@
 #ifndef COMMON_IO_H
 #define COMMON_IO_H
 
-#include <pthread.h>
 #include <stddef.h>
-
-// void initialize_lock();
-// void lock_lock();
-// void lock_unlock();
-void initialize();
-void lock(int file_descriptor);
-void unlock(int file_descriptor);
 int get_to_show();
 void set_to_show();
 /// Parses an unsigned integer from the given file descriptor.

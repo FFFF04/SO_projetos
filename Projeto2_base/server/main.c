@@ -14,6 +14,7 @@
 #include "common/constants.h"
 #include "operations.h"
 
+
 typedef struct{
   int session_id;
   pthread_mutex_t session_lock;
@@ -28,9 +29,8 @@ pthread_mutex_t g_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t read_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 pthread_cond_t sessions = PTHREAD_COND_INITIALIZER;
-pthread_mutex_t show_lock = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t buffer_lock = PTHREAD_MUTEX_INITIALIZER;
-
+// pthread_mutex_t show_lock = PTHREAD_MUTEX_INITIALIZER;
+// pthread_mutex_t buffer_lock = PTHREAD_MUTEX_INITIALIZER;
 
 
 static void sig_handler(int sig) {
@@ -59,23 +59,23 @@ void *threadfunction(void* arg){
 
   data *valores = (data*) arg;
   while(enter_session != valores->session_id){
+    if(get_to_show()) 
+      return NULL;
     pthread_cond_wait(&sessions, &valores->session_lock);
   }
   printf("ola1\n");
 
   int op = atoi(strtok(prod_consumidor, " "));
   // lock_unlock();
-  unlock(fserv);
-  req_pipe_name = strtok(NULL, " ");
+ 
+  req_pipe_name = strtok(NULL, " "); 
   resp_pipe_name = strtok(NULL, " ");
-  
+  memset(prod_consumidor, 0, 84 + 1);
+  // pthread_mutex_unlock(&buffer_lock);
+  // unlock(fserv);
   freq = open(req_pipe_name, O_RDONLY);
-  if (freq == -1){
-    fprintf(stderr, "Pipe open failed\n");
-    exit(EXIT_FAILURE);
-  }
   fresp = open(resp_pipe_name, O_WRONLY);
-  if (fresp == -1){
+  if (freq == -1 || fresp == -1){
     fprintf(stderr, "Pipe open failed\n");
     exit(EXIT_FAILURE);
   }
@@ -89,8 +89,6 @@ void *threadfunction(void* arg){
     }
     op = 0;
   }
-  memset(prod_consumidor, 0, 84 + 1);
-  // pthread_mutex_unlock(&buffer_lock);
   while (1){
     unsigned int event_id;
     char buffer[TAMMSG];
@@ -168,9 +166,8 @@ void *threadfunction(void* arg){
         ems_list_events(fresp);
           //fprintf(stderr, "Failed to list events\n");
         break;
-      default:
-        memset(buffer, 0, TAMMSG);
     }
+    memset(buffer, 0, TAMMSG);
   }
   return NULL;
 }
@@ -219,7 +216,7 @@ int main(int argc, char* argv[]) {
   data clients[S];
   pthread_t thread_id[S];
   // initialize_lock();
-  initialize();
+  // initialize();
   prod_consumidor = (char*) malloc(84+1);
   memset(prod_consumidor, 0, 84+1);
   for (int k = 0; k < S; k++){
@@ -238,19 +235,21 @@ int main(int argc, char* argv[]) {
       exit(EXIT_FAILURE);//CTRL-C
     if(get_to_show()) 
       break;
-    if(!pthread_mutex_trylock(&buffer_lock)) continue;
-    ssize_t ret = read(fserv, prod_consumidor,84 + 1);
+    // if(!pthread_mutex_trylock(&buffer_lock)) continue;
+    ssize_t ret = read(fserv, prod_consumidor,84-1);
     if (ret == -1) {
       fprintf(stderr, "Read failed\n");
       exit(EXIT_FAILURE);
     }
-    char cliente = prod_consumidor[0];
-    if (cliente != 0){
+    if (prod_consumidor[0]!= 0){
       if (pthread_mutex_lock(&g_mutex) != 0) 
         exit(EXIT_FAILURE);
       
-      while (active == S)
+      while (active == S){
+        if(get_to_show()) 
+          break;
         pthread_cond_wait(&cond, &g_mutex);
+      }
       printf("main: %s",prod_consumidor);
       enter_session = (enter_session + 1) % S;
       pthread_cond_broadcast(&sessions);
@@ -261,7 +260,7 @@ int main(int argc, char* argv[]) {
     }
     //TODO: Write new client to the producer-consumer buffer
   }
-
+  printf("hi1\n");
   ems_show_all(STDOUT_FILENO);
   ems_terminate();
   free(prod_consumidor);
@@ -269,3 +268,21 @@ int main(int argc, char* argv[]) {
   close(fserv);
   unlink(pipe_name);
 }
+//  while (true) {
+//         char buffer[BUFFER_SIZE];
+//         ssize_t ret = read(rx, buffer, BUFFER_SIZE - 1);
+//         if (ret == 0) {
+//             // ret == 0 signals EOF
+//             fprintf(stderr, "[INFO]: pipe closed\n");
+//             break;
+//         } else if (ret == -1) {
+//             // ret == -1 signals error
+//             fprintf(stderr, "[ERR]: read failed: %s\n", strerror(errno));
+//             exit(EXIT_FAILURE);
+//         }
+
+//         fprintf(stderr, "[INFO]: received %zd B\n", ret);
+//         buffer[ret] = 0;
+//         fputs(buffer, stdout);
+//         send_msg(tx, "GAWK\n");
+//     }

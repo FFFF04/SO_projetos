@@ -5,50 +5,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
-#include <fcntl.h>
-// #include <pthread.h>
 
-// pthread_mutex_t fifo_lock;
 int to_show = 0;
-
-// void initialize_lock(){
-//   if (pthread_mutex_init(&fifo_lock,NULL) != 0){
-//     fprintf(stderr, "Error in pthread_mutex_init()\n");
-//     exit(EXIT_FAILURE);
-//   }
-// }
-
-// void lock_lock(){
-//   if (pthread_mutex_lock(&fifo_lock) != 0){
-//     fprintf(stderr, "Error in pthread_mutex_lock()\n");
-//     exit(EXIT_FAILURE);
-//   }
-// }
-
-// void lock_unlock(){
-//   if (pthread_mutex_unlock(&fifo_lock) != 0){
-//     fprintf(stderr, "Error in pthread_mutex_unlock()\n");
-//     exit(EXIT_FAILURE);
-//   }
-// }
-
-struct flock fl;
-
-void initialize(){
-  fl.l_type = F_WRLCK;  // Exclusive write lock
-  fl.l_whence = SEEK_SET;
-  fl.l_start = 0;
-  fl.l_len = 0;  // Lock the entire file
-}
-
-void lock(int file_descriptor){
-  fcntl(file_descriptor, F_SETLKW, &fl);
-}
-
-void unlock(int file_descriptor){
-  fl.l_type = F_UNLCK;
-  fcntl(file_descriptor, F_SETLK, &fl);
-}
 
 int get_to_show(){
   return to_show;

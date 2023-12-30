@@ -11,10 +11,25 @@
 #include "api.h"
 #include "common/io.h"
 #include "common/constants.h"
+#define MSG_SIZE 84
 
 int SESSION_ID, req_pipe, resp_pipe;
 char *req_pipe_nome;
 char *resp_pipe_nome;
+
+
+void send_msg(int file, char const *str) {
+  size_t len = strlen(str);
+  size_t written = 0;
+  while (written < len) {
+    ssize_t ret = write(file, str + written, len - written);
+    if (ret < 0) {
+      fprintf(stderr, "Write failed\n");
+      exit(EXIT_FAILURE);
+    }
+    written += (size_t)(ret);
+  }
+}
 
 void read_wait(int file, char *buffer, size_t size){
   ssize_t ret = read(file, buffer, size);
@@ -34,7 +49,8 @@ void read_wait(int file, char *buffer, size_t size){
 int ems_setup(char const* req_pipe_path, char const* resp_pipe_path, char const* server_pipe_path) {
   //TODO: create pipes and connect to the server
   int fserv;
-  char msg[TAMMSG];
+  char msg[84];
+  //char msg[84] = { [0 ... 83] = ' ' };
   char buffer[16] = {};
   fserv = open(server_pipe_path, O_WRONLY);
   if (fserv == -1) {
@@ -51,23 +67,23 @@ int ems_setup(char const* req_pipe_path, char const* resp_pipe_path, char const*
     fprintf(stderr, "mkfifo failed\n");
     exit(EXIT_FAILURE);
   } 
-
+  // 
+  
+  // memset(msg, ' ', sizeof(msg)); 
+  // printf("%s ola\n",msg);
   req_pipe_nome = (char*) malloc(strlen(req_pipe_path) + 1);
   resp_pipe_nome = (char*) malloc(strlen(resp_pipe_path) + 1);
   strncpy(req_pipe_nome, req_pipe_path, strlen(req_pipe_path) + 1);
   strncpy(resp_pipe_nome, resp_pipe_path, strlen(resp_pipe_path) + 1);
-  ssize_t ret;
-  snprintf(msg, TAMMSG, "1 %s %s \n", req_pipe_path, resp_pipe_path);
-
-  // lock_lock();
-  lock(fserv);
-
-  printf("%s",msg);
-  ret = write(fserv, msg, strlen(msg) + 1);
-  if (ret < 0) {
-    fprintf(stderr, "Write failed\n");
-    exit(EXIT_FAILURE);
+  snprintf(msg, 84, "1 %s %s", req_pipe_path, resp_pipe_path);
+  int chars_written = snprintf(msg, MSG_SIZE, "1 %s %s", req_pipe_path, resp_pipe_path);
+  if (chars_written < 0 || chars_written >= MSG_SIZE) {
+      fprintf(stderr, "Error formatting string\n");
+      return 1;
   }
+  memset(msg + chars_written, ' ', (size_t)(MSG_SIZE - chars_written - 1));
+  msg[MSG_SIZE-1] = '\0';
+  send_msg(fserv, msg);
 
   req_pipe = open(req_pipe_path, O_WRONLY);
   resp_pipe = open(resp_pipe_path, O_RDONLY);
@@ -77,7 +93,6 @@ int ems_setup(char const* req_pipe_path, char const* resp_pipe_path, char const*
   }
   read_wait(resp_pipe, buffer, 16);
   SESSION_ID = atoi(buffer);
-  unlock(fserv);
   printf("adues\n");
   return 0;
 }
