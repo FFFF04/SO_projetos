@@ -22,16 +22,39 @@ typedef struct{
 }data;
 
 char *prod_consumidor;
-int S = MAX_SESSION_COUNT;
+int S = 2;
 int active = 0;
 int enter_session = -1;
 int fserv;
+int *arr;
+int size_arr;
 pthread_mutex_t g_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t read_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 pthread_cond_t sessions = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t sessions_mutex = PTHREAD_MUTEX_INITIALIZER;
 // pthread_mutex_t buffer_lock = PTHREAD_MUTEX_INITIALIZER;
+
+
+pthread_mutex_t arr_lock = PTHREAD_MUTEX_INITIALIZER;
+
+
+int del(){
+  int valor = arr[0];
+  for (int i = 1; i < size_arr; i++)
+    arr[i - 1] = arr[i];
+  arr = realloc(arr, (size_t)(size_arr - 1) * sizeof(int));
+  size_arr--;
+  return valor;
+}
+
+
+void add(int number){
+  size_arr++;
+  arr = realloc(arr, (size_t)(size_arr) * sizeof(int));
+  arr[size_arr - 1] = number;
+}
+
 
 
 static void sig_handler(int sig) {
@@ -60,11 +83,9 @@ void *threadfunction(void* arg){
 
   data *valores = (data*) arg;
   while(enter_session != valores->session_id){
-    if(get_to_show()) 
-      return NULL;
     pthread_cond_wait(&sessions, &valores->session_lock);
   }
-  printf("%d\n",valores->session_id);
+  
   int op = atoi(strtok(valores->mensagem, " "));
   req_pipe_name = strtok(NULL, " "); 
   printf("%s\n",req_pipe_name);
@@ -76,6 +97,8 @@ void *threadfunction(void* arg){
     fprintf(stderr, "Pipe open failed\n");
     exit(EXIT_FAILURE);
   }
+  if (pthread_mutex_unlock(&sessions_mutex) != 0) 
+    exit(EXIT_FAILURE);
   if(op == 1){
     char buffer[16] = {};
     sprintf(buffer, "%d", valores->session_id);
@@ -89,17 +112,6 @@ void *threadfunction(void* arg){
   while (1){
     unsigned int event_id;
     char buffer[TAMMSG];
-    if(get_to_show()){
-      if (pthread_mutex_lock(&g_mutex) != 0) {
-          exit(EXIT_FAILURE);
-      }
-      active--;
-      pthread_cond_signal(&cond);
-      if (pthread_mutex_unlock(&g_mutex) != 0) {
-        exit(EXIT_FAILURE);
-      }
-      break;
-    }
     ssize_t ret = read(freq, buffer, TAMMSG);
     if (ret == -1) {
       fprintf(stderr, "Read failed\n");
@@ -121,6 +133,15 @@ void *threadfunction(void* arg){
         if (pthread_mutex_unlock(&g_mutex) != 0) {
           exit(EXIT_FAILURE);
         }
+        
+        if (pthread_mutex_lock(&arr_lock) != 0) {
+          exit(EXIT_FAILURE);
+        }
+        add(valores->session_id);
+        if (pthread_mutex_unlock(&arr_lock) != 0) {
+          exit(EXIT_FAILURE);
+        }
+        printf("acabei:%d",valores->session_id);
         return NULL;
       case 3:
         event_id = (unsigned int)(atoi(strtok(NULL, " ")));
@@ -166,6 +187,14 @@ void *threadfunction(void* arg){
     }
     memset(buffer, 0, TAMMSG);
   }
+
+  if (pthread_mutex_lock(&arr_lock) != 0) {
+    exit(EXIT_FAILURE);
+  }
+  add(valores->session_id);
+  if (pthread_mutex_unlock(&arr_lock) != 0) {
+    exit(EXIT_FAILURE);
+  }
   return NULL;
 }
 
@@ -186,7 +215,7 @@ void read_msg(int file, size_t size) {
     }
     reads += (size_t)(ret);
   }
-  strcpy(prod_consumidor,msg);
+  memcpy(prod_consumidor,msg,strlen(msg)+1);
 }
 
 
@@ -236,8 +265,11 @@ int main(int argc, char* argv[]) {
   data clients[S];
   pthread_t thread_id[S];
   prod_consumidor = (char*) malloc(84);
+  arr = (int*) malloc(sizeof(int) * (size_t)(S));
+  size_arr = S;
   // memset(prod_consumidor, 0, 84);
   for (int k = 0; k < S; k++){
+    arr[k] = k;
     clients[k].session_id = k;
     pthread_mutex_init(&clients[k].session_lock, NULL); ///DAR ERRO
     pthread_mutex_lock(&clients[k].session_lock);
@@ -246,6 +278,7 @@ int main(int argc, char* argv[]) {
       exit(EXIT_FAILURE);
     }
   }
+  int cria_threads = 0;
   while (1) {
     //TODO: Read from pipe
     if (signal(SIGINT, sig_handler) == SIG_ERR)
@@ -254,11 +287,6 @@ int main(int argc, char* argv[]) {
       break;
     
     read_msg(fserv,83);
-    // ssize_t ret = read(fserv, prod_consumidor,TAMMSG);
-    // if (ret == -1) {
-    //   fprintf(stderr, "Read failed\n");
-    //   exit(EXIT_FAILURE);
-    // }
     
     if (prod_consumidor[0] != 0){
       
@@ -266,20 +294,38 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
       
       while (active == S){
-        if(get_to_show()) 
-          break;
         pthread_cond_wait(&cond, &g_mutex);
       }
-      if (pthread_mutex_lock(&sessions_mutex) != 0) 
+
+      if (pthread_mutex_lock(&arr_lock) != 0) {
         exit(EXIT_FAILURE);
-      enter_session = (enter_session + 1) % S;
-      printf("enter_session: %d\n",enter_session);
-      clients[enter_session].mensagem = (char *) malloc(84);
-      strcpy(clients[enter_session].mensagem,prod_consumidor);
-      printf("main: %s\n",clients[enter_session].mensagem);
+      }
+
+      int index = del();
+      printf("index: %d\n",index);
+      if (pthread_mutex_unlock(&arr_lock) != 0) {
+        exit(EXIT_FAILURE);
+      }
+      clients[index].mensagem = (char *) malloc(84);
+      memcpy(clients[index].mensagem, prod_consumidor, strlen(prod_consumidor)+1);
+      printf("main: %s\n", clients[index].mensagem);
+      if(cria_threads == 1){
+        clients[index].session_id = index;
+        pthread_mutex_init(&clients[index].session_lock, NULL); 
+        pthread_mutex_lock(&clients[index].session_lock);
+        if (pthread_create(&thread_id[index], NULL, &threadfunction, &clients[index]) != 0){
+          fprintf(stderr, "Failed to create thread\n");
+          exit(EXIT_FAILURE);
+        }
+      }
+
+      if (pthread_mutex_lock(&sessions_mutex) != 0)
+        exit(EXIT_FAILURE);
+
+      enter_session = index;
+      if(enter_session == S-1)
+        cria_threads = 1;
       pthread_cond_broadcast(&sessions);
-      if (pthread_mutex_unlock(&sessions_mutex) != 0) 
-        exit(EXIT_FAILURE);
       
       active++;
       if (pthread_mutex_unlock(&g_mutex) != 0) {
@@ -296,21 +342,3 @@ int main(int argc, char* argv[]) {
   close(fserv);
   unlink(pipe_name);
 }
-//  while (true) {
-//         char buffer[BUFFER_SIZE];
-//         ssize_t ret = read(rx, buffer, BUFFER_SIZE - 1);
-//         if (ret == 0) {
-//             // ret == 0 signals EOF
-//             fprintf(stderr, "[INFO]: pipe closed\n");
-//             break;
-//         } else if (ret == -1) {
-//             // ret == -1 signals error
-//             fprintf(stderr, "[ERR]: read failed: %s\n", strerror(errno));
-//             exit(EXIT_FAILURE);
-//         }
-
-//         fprintf(stderr, "[INFO]: received %zd B\n", ret);
-//         buffer[ret] = 0;
-//         fputs(buffer, stdout);
-//         send_msg(tx, "GAWK\n");
-//     }
