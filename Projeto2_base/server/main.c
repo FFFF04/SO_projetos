@@ -65,8 +65,12 @@ static void sig_handler(int sig) {
     kill(getpid(),SIGUSR1);
     return;
   }
-  if (sig == SIGUSR1)
+  if (sig == SIGUSR1){
+    if (signal(SIGUSR1, sig_handler) == SIG_ERR)
+      exit(EXIT_FAILURE);
     ems_show_all(STDOUT_FILENO);
+  }
+    
 }
 
 //FALTA DA ERROS
@@ -90,10 +94,10 @@ void *threadfunction(void* arg){
     pthread_cond_wait(&sessions, &valores->session_lock);
   }
   
-  int op = atoi(strtok(valores->mensagem, " "));
-  req_pipe_name = strtok(NULL, " "); 
+  int op = atoi(strtok_r(valores->mensagem, " ", &valores->mensagem));
+  req_pipe_name = strtok_r(valores->mensagem, " ", &valores->mensagem); 
   printf("%s\n",req_pipe_name);
-  resp_pipe_name = strtok(NULL, " ");
+  resp_pipe_name = strtok_r(valores->mensagem, " ", &valores->mensagem);
   printf("%s\n",resp_pipe_name);
   freq = open(req_pipe_name, O_RDONLY);
   fresp = open(resp_pipe_name, O_WRONLY);
