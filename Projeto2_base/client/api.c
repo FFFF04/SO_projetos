@@ -97,14 +97,12 @@ int ems_setup(char const* req_pipe_path, char const* resp_pipe_path, char const*
 
 int ems_quit(void) { 
   //TODO: close pipes
-  if(!get_to_show()){
-    char msg[TAMMSG];
-    snprintf(msg, TAMMSG, "2");
-    ssize_t ret = write(req_pipe, msg, strlen(msg) + 1);
-    if (ret < 0) {
-      fprintf(stderr, "Write failed\n");
-      exit(EXIT_FAILURE);
-    }
+  char msg[TAMMSG];
+  snprintf(msg, TAMMSG, "2");
+  ssize_t ret = write(req_pipe, msg, strlen(msg) + 1);
+  if (ret < 0) {
+    fprintf(stderr, "Write failed\n");
+    exit(EXIT_FAILURE);
   }
   /*FALTA DAR ERROS*/
   close(req_pipe);

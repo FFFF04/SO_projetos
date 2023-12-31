@@ -376,8 +376,6 @@ int ems_list_events(int out_fd) {
 }
 
 void ems_show_all(int out_fd){
-  // char msg[TAMMSG] = {};
-  printf("hi\n");
   if (event_list == NULL) {
     ssize_t escreve = write(out_fd,"1\n",2);
     if (escreve < 0)
@@ -398,14 +396,26 @@ void ems_show_all(int out_fd){
       exit(EXIT_FAILURE);
     }
   }
-  else{
+  pthread_rwlock_unlock(&event_list->rwl);
+  if(head != NULL){
+    if (pthread_rwlock_rdlock(&event_list->rwl) != 0) {
+      fprintf(stderr, "Error locking list rwl\n");
+      return;
+    }
+    unsigned int *events_ids;
+    int num_event = 0;
+    struct ListNode* current = head;
     while (1) {
-      ems_show(out_fd, head->event->id);
-      if (head == tail) {
+      num_event++;
+      events_ids = realloc(events_ids, (size_t)(num_event) * sizeof(unsigned int));
+      events_ids[num_event - 1] = current->event->id;
+      if (current == tail) {
         break;
       }
-      head = head->next;
+      current = current->next;
     }
+    pthread_rwlock_unlock(&event_list->rwl);
+    for( int i = 0; i < num_event; i++)
+      ems_show(out_fd, events_ids[i]);
   }
-  pthread_rwlock_unlock(&event_list->rwl);
 }

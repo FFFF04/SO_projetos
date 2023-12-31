@@ -22,7 +22,7 @@ typedef struct{
 }data;
 
 char *prod_consumidor;
-int S = 2;
+int S = MAX_SESSION_COUNT;
 int active = 0;
 int enter_session = -1;
 int fserv;
@@ -61,8 +61,12 @@ static void sig_handler(int sig) {
   if (sig == SIGINT) {
     if (signal(SIGINT, sig_handler) == SIG_ERR)
       exit(EXIT_FAILURE);
-    set_to_show();
+    // set_to_show();
+    kill(getpid(),SIGUSR1);
+    return;
   }
+  if (sig == SIGUSR1)
+    ems_show_all(STDOUT_FILENO);
 }
 
 //FALTA DA ERROS
@@ -141,7 +145,7 @@ void *threadfunction(void* arg){
         if (pthread_mutex_unlock(&arr_lock) != 0) {
           exit(EXIT_FAILURE);
         }
-        printf("acabei:%d",valores->session_id);
+        // printf("acabei:%d",valores->session_id);
         return NULL;
       case 3:
         event_id = (unsigned int)(atoi(strtok(NULL, " ")));
@@ -283,8 +287,11 @@ int main(int argc, char* argv[]) {
     //TODO: Read from pipe
     if (signal(SIGINT, sig_handler) == SIG_ERR)
       exit(EXIT_FAILURE);//CTRL-C
-    if(get_to_show()) 
-      break;
+    if (signal(SIGUSR1, sig_handler) == SIG_ERR){
+      // printf("ems_show_all\n");
+      // ems_show_all(STDOUT_FILENO);
+      exit(EXIT_FAILURE);
+    } 
     
     read_msg(fserv,83);
     
@@ -302,7 +309,7 @@ int main(int argc, char* argv[]) {
       }
 
       int index = del();
-      printf("index: %d\n",index);
+      // printf("index: %d\n",index);
       if (pthread_mutex_unlock(&arr_lock) != 0) {
         exit(EXIT_FAILURE);
       }
@@ -335,7 +342,6 @@ int main(int argc, char* argv[]) {
     }
     //TODO: Write new client to the producer-consumer buffer
   }
-  ems_show_all(STDOUT_FILENO);
   ems_terminate();
   free(prod_consumidor);
   //TODO: Close Server
