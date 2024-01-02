@@ -204,7 +204,6 @@ int ems_show(int out_fd, unsigned int event_id) {
     return 1;
   }
 
-  
   char buffer[TAMMSG] = {};
   if(out_fd != 1){
     char msg[16];
@@ -221,28 +220,10 @@ int ems_show(int out_fd, unsigned int event_id) {
       char buf[16];
       sprintf(buf, "%u", event->data[seat_index(event, i, j)]);
       strcat(buffer,buf);
-      // if (print_str(out_fd, buffer)) {
-      //   perror("Error writing to file descriptor");
-      //   pthread_mutex_unlock(&event->mutex);
-      //   return 1;
-      // }
       if (j < event->cols)
         strcat(buffer," ");
-      
-      // if (j < event->cols) {
-      //   if (print_str(out_fd, " ")) {
-      //     perror("Error writing to file descriptor");
-      //     pthread_mutex_unlock(&event->mutex);
-      //     return 1;
-      //   }
-      // }
     }
     strcat(buffer,"\n");
-    // if (print_str(out_fd, "\n")) {
-    //   perror("Error writing to file descriptor");
-    //   pthread_mutex_unlock(&event->mutex);
-    //   return 1;
-    // }
   }
   escreve = write(out_fd,buffer,strlen(buffer));
   if (escreve < 0) {
@@ -251,41 +232,6 @@ int ems_show(int out_fd, unsigned int event_id) {
   }
   pthread_mutex_unlock(&event->mutex);
   return 0;
-
-  /*char msg[16];
-  sprintf(msg,"0 %zu %zu\n",event->rows,event->cols);
-  escreve = write(out_fd,msg,16);
-  if (escreve < 0) {
-    fprintf(stderr, "Error writing in pipe\n");
-    exit(EXIT_FAILURE);
-  }
-  for (size_t i = 1; i <= event->rows; i++) {
-    for (size_t j = 1; j <= event->cols; j++) {
-      char buffer[16];
-      sprintf(buffer, "%u ", event->data[seat_index(event, i, j)]);
-
-      if (print_str(out_fd, buffer)) {
-        perror("Error writing to file descriptor");
-        pthread_mutex_unlock(&event->mutex);
-        return 1;
-      }
-
-      if (j < event->cols) {
-        if (print_str(out_fd, " ")) {
-          perror("Error writing to file descriptor");
-          pthread_mutex_unlock(&event->mutex);
-          return 1;
-        }
-      }
-    }
-    if (print_str(out_fd, "\n")) {
-      perror("Error writing to file descriptor");
-      pthread_mutex_unlock(&event->mutex);
-      return 1;
-    }
-  }
-  pthread_mutex_unlock(&event->mutex);
-  return 0;*/
 }
 
 int ems_list_events(int out_fd) {
@@ -343,20 +289,10 @@ int ems_list_events(int out_fd) {
   while (1) {
     char buff[] = "Event: ";
     strcat(msg,buff);
-    // if (print_str(out_fd, buff)) {
-    //   perror("Error writing to file descriptor");
-    //   pthread_rwlock_unlock(&event_list->rwl);
-    //   return 1;
-    // }
 
     char id[16];
     sprintf(id, "%u|\n", (current->event)->id);
     strcat(msg,id);
-    // if (print_str(out_fd, id)) {
-    //   perror("Error writing to file descriptor");
-    //   pthread_rwlock_unlock(&event_list->rwl);
-    //   return 1;
-    // }
 
     if (current == to) {
       break;

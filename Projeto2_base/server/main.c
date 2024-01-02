@@ -33,9 +33,6 @@ pthread_mutex_t read_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 pthread_cond_t sessions = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t sessions_mutex = PTHREAD_MUTEX_INITIALIZER;
-// pthread_mutex_t buffer_lock = PTHREAD_MUTEX_INITIALIZER;
-
-
 pthread_mutex_t arr_lock = PTHREAD_MUTEX_INITIALIZER;
 
 
@@ -78,10 +75,10 @@ void *threadfunction(void* arg){
   char* req_pipe_name;
   char* resp_pipe_name;
   int fresp , freq;
+  
   sigset_t new_mask;
-  sigemptyset(&new_mask); // Initialize an empty signal set
-  sigaddset(&new_mask, SIGUSR1); // Add SIGUSR1 to the signal set
-  // Block SIGUSR1 in this thread
+  sigemptyset(&new_mask);
+  sigaddset(&new_mask, SIGUSR1);
   pthread_sigmask(SIG_BLOCK, &new_mask, NULL);
 
   if(pthread_detach(pthread_self()) != 0){
@@ -96,11 +93,10 @@ void *threadfunction(void* arg){
   
   int op = atoi(strtok_r(valores->mensagem, " ", &valores->mensagem));
   req_pipe_name = strtok_r(valores->mensagem, " ", &valores->mensagem); 
-  printf("%s\n",req_pipe_name);
   resp_pipe_name = strtok_r(valores->mensagem, " ", &valores->mensagem);
-  printf("%s\n",resp_pipe_name);
   freq = open(req_pipe_name, O_RDONLY);
   fresp = open(resp_pipe_name, O_WRONLY);
+  
   if (freq == -1 || fresp == -1){
     fprintf(stderr, "Pipe open failed\n");
     exit(EXIT_FAILURE);
@@ -149,7 +145,6 @@ void *threadfunction(void* arg){
         if (pthread_mutex_unlock(&arr_lock) != 0) {
           exit(EXIT_FAILURE);
         }
-        // printf("acabei:%d",valores->session_id);
         return NULL;
       case 3:
         event_id = (unsigned int)(atoi(strtok(NULL, " ")));
@@ -181,16 +176,13 @@ void *threadfunction(void* arg){
           fprintf(stderr, "Error writing in pipe\n");
           exit(EXIT_FAILURE);
         }
-        // fprintf(stderr, "Failed to create event\n");
         break;
       case 5:
         event_id = (unsigned int)(atoi(strtok(NULL, " ")));
         ems_show(fresp, event_id);
-        //fprintf(stderr, "Failed to show event\n");
         break;
       case 6:
         ems_list_events(fresp);
-          //fprintf(stderr, "Failed to list events\n");
         break;
     }
     memset(buffer, 0, TAMMSG);
@@ -214,7 +206,6 @@ void *threadfunction(void* arg){
 void read_msg(int file, size_t size) {
   size_t reads = 0;
   char msg[84] = {};
-  // char buff[1] = {};
   while (reads < size) {
     ssize_t ret = read(file, msg - reads, size - reads);
     if (ret < 0) {
@@ -275,7 +266,6 @@ int main(int argc, char* argv[]) {
   prod_consumidor = (char*) malloc(84);
   arr = (int*) malloc(sizeof(int) * (size_t)(S));
   size_arr = S;
-  // memset(prod_consumidor, 0, 84);
   for (int k = 0; k < S; k++){
     arr[k] = k;
     clients[k].session_id = k;
@@ -292,8 +282,6 @@ int main(int argc, char* argv[]) {
     if (signal(SIGINT, sig_handler) == SIG_ERR)
       exit(EXIT_FAILURE);//CTRL-C
     if (signal(SIGUSR1, sig_handler) == SIG_ERR){
-      // printf("ems_show_all\n");
-      // ems_show_all(STDOUT_FILENO);
       exit(EXIT_FAILURE);
     } 
     
@@ -313,13 +301,11 @@ int main(int argc, char* argv[]) {
       }
 
       int index = del();
-      // printf("index: %d\n",index);
       if (pthread_mutex_unlock(&arr_lock) != 0) {
         exit(EXIT_FAILURE);
       }
       clients[index].mensagem = (char *) malloc(84);
       memcpy(clients[index].mensagem, prod_consumidor, strlen(prod_consumidor)+1);
-      printf("main: %s\n", clients[index].mensagem);
       if(cria_threads == 1){
         clients[index].session_id = index;
         pthread_mutex_init(&clients[index].session_lock, NULL); 
@@ -346,6 +332,19 @@ int main(int argc, char* argv[]) {
     }
     //TODO: Write new client to the producer-consumer buffer
   }
+  for (int k = 0; k < S; k++){
+    if (pthread_mutex_destroy(&clients[k].session_lock) != 0){
+      fprintf(stderr, "Failed to destroy lock\n");
+      exit(EXIT_FAILURE);
+    }
+  }
+  if (pthread_mutex_destroy(&g_mutex) != 0 || pthread_mutex_destroy(&read_lock) != 0 
+    || pthread_mutex_destroy(&sessions_mutex) != 0 || pthread_mutex_destroy(&arr_lock) ||
+      pthread_cond_destroy(&cond) != 0 || pthread_cond_destroy(&sessions) != 0){
+    fprintf(stderr, "Failed to destroy lock\n");
+    exit(EXIT_FAILURE);
+  }
+
   ems_terminate();
   free(prod_consumidor);
   //TODO: Close Server

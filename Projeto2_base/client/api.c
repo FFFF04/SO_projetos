@@ -50,7 +50,6 @@ int ems_setup(char const* req_pipe_path, char const* resp_pipe_path, char const*
   //TODO: create pipes and connect to the server
   int fserv;
   char msg[84];
-  //char msg[84] = { [0 ... 83] = ' ' };
   char buffer[16] = {};
   fserv = open(server_pipe_path, O_WRONLY);
   if (fserv == -1) {
@@ -79,8 +78,6 @@ int ems_setup(char const* req_pipe_path, char const* resp_pipe_path, char const*
       return 1;
   }
   memset(msg + chars_written, ' ', (size_t)(MSG_SIZE - chars_written - 1));
-  // printf("%s\n",msg);
-  // msg[MSG_SIZE-1] = '\0';
   send_msg(fserv, msg);
 
   req_pipe = open(req_pipe_path, O_WRONLY);
@@ -208,7 +205,6 @@ int ems_list_events(int out_fd) {
   ret = (atoi(strtok(buffer, " ")));
   if(ret != 1){
     size_t num_events = (size_t)(atoi(strtok(NULL, " ")));
-    //char *mensagem = (char*) malloc((num_events)+1);
     while(num_events != 0){
       char *mensagem = strtok(NULL,"|");
       ret = write(out_fd, mensagem, strlen(mensagem));
@@ -219,9 +215,7 @@ int ems_list_events(int out_fd) {
       num_events--;
       memset(mensagem,0,strlen(mensagem));
     }
-    //free(mensagem); 
     return 0;
-    //unsigned int *ids = strtok(buffer, " ");///memoria
   }
 
   return 1;
