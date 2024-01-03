@@ -68,7 +68,15 @@ int ems_setup(char const* req_pipe_path, char const* resp_pipe_path, char const*
   } 
 
   req_pipe_nome = (char*) malloc(strlen(req_pipe_path) + 1);
+  if (req_pipe_nome == NULL) {
+    fprintf(stderr, "Error: Memory allocation failed\n");
+    exit(EXIT_FAILURE);
+  }
   resp_pipe_nome = (char*) malloc(strlen(resp_pipe_path) + 1);
+  if (resp_pipe_nome == NULL) {
+    fprintf(stderr, "Error: Memory allocation failed\n");
+    exit(EXIT_FAILURE);
+  }
   strncpy(req_pipe_nome, req_pipe_path, strlen(req_pipe_path) + 1);
   strncpy(resp_pipe_nome, resp_pipe_path, strlen(resp_pipe_path) + 1);
   snprintf(msg, 84, "1 %s %s", req_pipe_path, resp_pipe_path);
@@ -102,10 +110,23 @@ int ems_quit(void) {
     exit(EXIT_FAILURE);
   }
   /*FALTA DAR ERROS*/
-  close(req_pipe);
-  close(resp_pipe);
-  unlink(req_pipe_nome);
-  unlink(resp_pipe_nome);
+  if (close(req_pipe) == -1) {
+    perror("Error closing req_pipe");
+    exit(EXIT_FAILURE);
+  }
+  if (close(resp_pipe) == -1) {
+    perror("Error closing resp_pipe");
+    exit(EXIT_FAILURE);
+  }
+  if (unlink(req_pipe_nome) == -1) {
+    perror("Error unlinking req_pipe_nome");
+    exit(EXIT_FAILURE);
+  }
+
+  if (unlink(resp_pipe_nome) == -1) {
+    perror("Error unlinking resp_pipe_nome");
+    exit(EXIT_FAILURE);
+  }
   free(req_pipe_nome);
   free(resp_pipe_nome);
   return 0;

@@ -41,7 +41,12 @@ int del(){
   for (int i = 1; i < size_arr; i++)
     arr[i - 1] = arr[i];
   arr = realloc(arr, (size_t)(size_arr - 1) * sizeof(int));
-  size_arr--;
+  if(arr != NULL)
+    size_arr--;
+  else {
+    fprintf(stderr, "Memory reallocation failed. Deleting element aborted.\n");
+    exit(EXIT_FAILURE);
+  }
   return valor;
 }
 
@@ -49,7 +54,12 @@ int del(){
 void add(int number){
   size_arr++;
   arr = realloc(arr, (size_t)(size_arr) * sizeof(int));
-  arr[size_arr - 1] = number;
+  if(arr != NULL)
+    arr[size_arr - 1] = number;
+  else {
+    fprintf(stderr, "Memory reallocation failed. Adding element aborted.\n");
+    exit(EXIT_FAILURE);
+  }
 }
 
 
@@ -214,7 +224,7 @@ void read_msg(int file, size_t size) {
     }
     reads += (size_t)(ret);
   }
-  memcpy(prod_consumidor,msg,strlen(msg)+1);
+  memcpy(prod_consumidor, msg, strlen(msg)+1);
 }
 
 
@@ -264,7 +274,15 @@ int main(int argc, char* argv[]) {
   data clients[S];
   pthread_t thread_id[S];
   prod_consumidor = (char*) malloc(84);
+  if (prod_consumidor == NULL) {
+    fprintf(stderr, "Error: Memory allocation failed\n");
+    exit(EXIT_FAILURE);
+  }
   arr = (int*) malloc(sizeof(int) * (size_t)(S));
+  if (arr == NULL) {
+    fprintf(stderr, "Error: Memory allocation failed\n");
+    exit(EXIT_FAILURE);
+  }
   size_arr = S;
   for (int k = 0; k < S; k++){
     arr[k] = k;
@@ -305,6 +323,10 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
       }
       clients[index].mensagem = (char *) malloc(84);
+      if (clients[index].mensagem  == NULL) {
+        fprintf(stderr, "Error: Memory allocation failed\n");
+        exit(EXIT_FAILURE);
+      }
       memcpy(clients[index].mensagem, prod_consumidor, strlen(prod_consumidor)+1);
       if(cria_threads == 1){
         clients[index].session_id = index;
@@ -348,6 +370,12 @@ int main(int argc, char* argv[]) {
   ems_terminate();
   free(prod_consumidor);
   //TODO: Close Server
-  close(fserv);
-  unlink(pipe_name);
+  if (close(fserv) == -1) {
+    perror("Error closing resp_pipe");
+    exit(EXIT_FAILURE);//erros
+  }
+  if (unlink(pipe_name) == -1) {
+    perror("Error unlinking pipe_name");
+    exit(EXIT_FAILURE);
+  }
 }
