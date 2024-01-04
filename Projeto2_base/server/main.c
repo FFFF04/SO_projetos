@@ -28,6 +28,7 @@ int enter_session = -1;
 int fserv;
 int *arr;
 int size_arr;
+int show_all=0;
 pthread_mutex_t g_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t read_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
@@ -65,17 +66,21 @@ void add(int number){
 
 
 static void sig_handler(int sig) {
-  if (sig == SIGINT) {
-    if (signal(SIGINT, sig_handler) == SIG_ERR)
-      exit(EXIT_FAILURE);
-    // set_to_show();
-    kill(getpid(),SIGUSR1);
-    return;
-  }
+  // if (sig == SIGINT) {
+  //   if (signal(SIGINT, sig_handler) == SIG_ERR)
+  //     exit(EXIT_FAILURE);
+  //   // set_to_show();
+  //   kill(getpid(),SIGUSR1);
+  //   return;
+  // }
   if (sig == SIGUSR1){
-    if (signal(SIGUSR1, sig_handler) == SIG_ERR)
-      exit(EXIT_FAILURE);
+    // write(STDOUT_FILENO, "SIIIIIIIIIIIIIIIIIIIIIIIIMMMMM\n", 30);
+    // if (signal(SIGUSR1, sig_handler) == SIG_ERR)
+    //   exit(EXIT_FAILURE);
     ems_show_all(STDOUT_FILENO);
+    set_to_show();
+    show_all = 1;
+
   }
 }
 
@@ -208,7 +213,7 @@ int main(int argc, char* argv[]) {
   }
   char *pipe_name = "";
   char* endptr;
-
+  
   unsigned int state_access_delay_us = STATE_ACCESS_DELAY_US;
   if (argc == 3) {
     unsigned long int delay = strtoul(argv[2], &endptr, 10);
@@ -236,7 +241,7 @@ int main(int argc, char* argv[]) {
     exit(EXIT_FAILURE);
   } 
 
-  fserv = open(pipe_name, O_RDONLY);
+  fserv = open(pipe_name, O_RDWR);
   if (fserv == -1) {
     fprintf(stderr, "Server open failed\n");
     exit(EXIT_FAILURE);
@@ -264,15 +269,28 @@ int main(int argc, char* argv[]) {
       exit(EXIT_FAILURE);
     }
   }
+  struct sigaction s;
+  s.sa_handler = &sig_handler;
+  sigemptyset(&s.sa_mask);
+  if (sigaction(SIGUSR1, &s, NULL) == -1){
+    fprintf(stderr, "Error sigaction\n");
+    exit(EXIT_FAILURE);
+  } 
   int cria_threads = 0;
   while (1) {
     //TODO: Read from pipe
-    if (signal(SIGINT, sig_handler) == SIG_ERR)
-      exit(EXIT_FAILURE);//CTRL-C
-    if (signal(SIGUSR1, sig_handler) == SIG_ERR){
-      exit(EXIT_FAILURE);
-    } 
-    
+    // if (signal(SIGINT, sig_handler) == SIG_ERR)
+    //   exit(EXIT_FAILURE);//CTRL-C
+    // if (signal(SIGUSR1, sig_handler) == SIG_ERR){
+    //   exit(EXIT_FAILURE);
+    // } 
+    if(show_all == 1){
+      write(STDOUT_FILENO, "SIIIIIIIIIIIIIIIIIIIIIIIIMMMMM\n", 30);
+      ems_show_all(STDOUT_FILENO);
+      reset_to_show();
+      show_all = 0;
+    }
+
     read_msg(prod_consumidor,fserv,83);
     
     if (prod_consumidor[0] != 0){

@@ -5,6 +5,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <errno.h>
+#include <signal.h>
 
 int to_show = 0;
 
@@ -14,6 +16,9 @@ int get_to_show(){
 
 void set_to_show(){
   to_show = 1;
+}
+void reset_to_show(){
+  to_show = 0;
 }
 
 void send_msg(int file, char const *str) {
@@ -35,6 +40,7 @@ void read_msg(char *prod_consumidor,int file, size_t size) {
   while (reads < size) {
     ssize_t ret = read(file, msg - reads, size - reads);
     if (ret < 0) {
+
       fprintf(stderr, "Read failed\n");
       exit(EXIT_FAILURE);
     }

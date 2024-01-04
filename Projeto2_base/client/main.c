@@ -12,16 +12,6 @@
 int in_fd;
 int out_fd;
 
-static void sig_handler(int sig) {
-  if (signal(sig, sig_handler) == SIG_ERR)
-    exit(EXIT_FAILURE);
-  // set_to_show();
-  close(in_fd);
-  close(out_fd);
-  ems_quit();
-  exit(EXIT_SUCCESS);
-}
-
 
 int main(int argc, char* argv[]) {
   if (argc < 5) {
@@ -63,8 +53,6 @@ int main(int argc, char* argv[]) {
     size_t num_rows, num_columns, num_coords;
     unsigned int delay = 0;
     size_t xs[MAX_RESERVATION_SIZE], ys[MAX_RESERVATION_SIZE];
-    if (signal(SIGINT, sig_handler) == SIG_ERR)
-      exit(EXIT_FAILURE);//CTRL-C
     switch (get_next(in_fd)) {
       case CMD_CREATE:
         if (parse_create(in_fd, &event_id, &num_rows, &num_columns) != 0) {

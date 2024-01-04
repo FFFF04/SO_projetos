@@ -330,6 +330,5 @@ void ems_show_all(int out_fd){
     pthread_rwlock_unlock(&event_list->rwl);
     for( int i = 0; i < num_event; i++)
       ems_show(out_fd, events_ids[i]);
-    free(events_ids);
   }
 }

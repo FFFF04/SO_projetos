@@ -6,6 +6,7 @@ void send_msg(int file, char const *str);
 void read_msg(char *prod_consumidor,int file, size_t size);
 int get_to_show();
 void set_to_show();
+void reset_to_show();
 /// Parses an unsigned integer from the given file descriptor.
 /// @param fd The file descriptor to read from.
 /// @param value Pointer to the variable to store the value in.
