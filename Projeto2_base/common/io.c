@@ -40,7 +40,8 @@ void read_msg(char *prod_consumidor,int file, size_t size) {
   while (reads < size) {
     ssize_t ret = read(file, msg - reads, size - reads);
     if (ret < 0) {
-
+      if (errno == EINTR)
+        break;
       fprintf(stderr, "Read failed\n");
       exit(EXIT_FAILURE);
     }
