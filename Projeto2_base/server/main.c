@@ -135,7 +135,6 @@ void *threadfunction(void* arg){
     
     int code_number = atoi(strtok(buffer, " "));
     buffer[ret] = 0;
-    ssize_t escreve;
     switch (code_number) {
       case 2:
         if (pthread_mutex_lock(&g_mutex) != 0) {
@@ -163,13 +162,9 @@ void *threadfunction(void* arg){
         size_t num_rows = (size_t)(atoi(strtok(NULL, " ")));
         size_t num_columns = (size_t)(atoi(strtok(NULL, " ")));
         if(ems_create(event_id, num_rows, num_columns))
-          escreve = write(fresp,"1\n",2);
+          send_msg(fresp,"1\n");
         else
-          escreve = write(fresp,"0\n",2);
-        if (escreve < 0) {
-          fprintf(stderr, "Error writing in pipe\n");
-          exit(EXIT_FAILURE);
-        }
+          send_msg(fresp,"0\n");
         break;
       case 4:
         event_id = (unsigned int)(atoi(strtok(NULL, " ")));
@@ -181,13 +176,9 @@ void *threadfunction(void* arg){
         }
 
         if(ems_reserve(event_id, num_coords, xs, ys))
-          escreve = write(fresp,"1\n",2);
+          send_msg(fresp,"1\n");
         else
-          escreve = write(fresp,"0\n",2);
-        if (escreve < 0) {
-          fprintf(stderr, "Error writing in pipe\n");
-          exit(EXIT_FAILURE);
-        }
+          send_msg(fresp,"0\n");
         break;
       case 5:
         event_id = (unsigned int)(atoi(strtok(NULL, " ")));

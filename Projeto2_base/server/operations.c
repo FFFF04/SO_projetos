@@ -175,12 +175,9 @@ int ems_reserve(unsigned int event_id, size_t num_seats, size_t* xs, size_t* ys)
 }
 
 int ems_show(int out_fd, unsigned int event_id) {
-  ssize_t escreve;
   if (event_list == NULL) {
     fprintf(stderr, "EMS state must be initialized\n");
-    escreve = write(out_fd,"1\n",2);
-    if (escreve < 0)
-      fprintf(stderr, "Error writing in pipe\n");
+    print_str(out_fd,"1\n");
     return 1;
   }
 
@@ -193,9 +190,7 @@ int ems_show(int out_fd, unsigned int event_id) {
 
   if (event == NULL) {
     fprintf(stderr, "Event not found\n");
-    escreve = write(out_fd,"1\n",2);
-    if (escreve < 0)
-      fprintf(stderr, "Error writing in pipe\n");
+    print_str(out_fd,"1\n");
     return 1;
   }
 
@@ -225,22 +220,15 @@ int ems_show(int out_fd, unsigned int event_id) {
     }
     strcat(buffer,"\n");
   }
-  escreve = write(out_fd,buffer,strlen(buffer));
-  if (escreve < 0) {
-    fprintf(stderr, "Error writing in pipe\n");
-    exit(EXIT_FAILURE);
-  }
+  print_str(out_fd,buffer);
   pthread_mutex_unlock(&event->mutex);
   return 0;
 }
 
 int ems_list_events(int out_fd) {
-  ssize_t escreve;
   if (event_list == NULL) {
     fprintf(stderr, "EMS state must be initialized\n");
-    escreve = write(out_fd,"1\n",2);
-    if (escreve < 0)
-      fprintf(stderr, "Error writing in pipe\n");
+    print_str(out_fd,"1\n");
     return 1;
   }
 
@@ -301,21 +289,14 @@ int ems_list_events(int out_fd) {
     current = current->next;
   }
 
-  escreve = write(out_fd,msg,strlen(msg));
-  if (escreve < 0) {
-    fprintf(stderr, "Error writing in pipe\n");
-    exit(EXIT_FAILURE);
-  }
-
+  print_str(out_fd,msg);
   pthread_rwlock_unlock(&event_list->rwl);
   return 0;
 }
 
 void ems_show_all(int out_fd){
   if (event_list == NULL) {
-    ssize_t escreve = write(out_fd,"1\n",2);
-    if (escreve < 0)
-      fprintf(stderr, "Error writing in pipe\n");
+    print_str(out_fd,"1\n");
     return;
   }
   if (pthread_rwlock_rdlock(&event_list->rwl) != 0) {
@@ -326,11 +307,7 @@ void ems_show_all(int out_fd){
   struct ListNode* head = event_list->head;
   if (head == NULL) {
     char buff[] = "No events\n";
-    ssize_t escreve = write(out_fd,buff,strlen(buff));
-    if (escreve < 0) {
-      fprintf(stderr, "Error writing in pipe\n");
-      exit(EXIT_FAILURE);
-    }
+    print_str(out_fd,buff);
   }
   pthread_rwlock_unlock(&event_list->rwl);
   if(head != NULL){
