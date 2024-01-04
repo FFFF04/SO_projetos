@@ -2,11 +2,26 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-
+#include <signal.h>
+#include <stdlib.h>
 #include "api.h"
 #include "common/constants.h"
 #include "common/io.h"
 #include "parser.h"
+
+int in_fd;
+int out_fd;
+
+static void sig_handler(int sig) {
+  if (signal(sig, sig_handler) == SIG_ERR)
+    exit(EXIT_FAILURE);
+  // set_to_show();
+  close(in_fd);
+  close(out_fd);
+  ems_quit();
+  exit(EXIT_SUCCESS);
+}
+
 
 int main(int argc, char* argv[]) {
   if (argc < 5) {
@@ -31,13 +46,13 @@ int main(int argc, char* argv[]) {
   strcpy(out_path, argv[4]);
   strcpy(strrchr(out_path, '.'), ".out");
 
-  int in_fd = open(argv[4], O_RDONLY);
+  in_fd = open(argv[4], O_RDONLY);
   if (in_fd == -1) {
     fprintf(stderr, "Failed to open input file. Path: %s\n", argv[4]);
     return 1;
   }
 
-  int out_fd = open(out_path, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+  out_fd = open(out_path, O_WRONLY | O_CREAT | O_TRUNC, 0666);
   if (out_fd == -1) {
     fprintf(stderr, "Failed to open output file. Path: %s\n", out_path);
     return 1;
@@ -48,6 +63,8 @@ int main(int argc, char* argv[]) {
     size_t num_rows, num_columns, num_coords;
     unsigned int delay = 0;
     size_t xs[MAX_RESERVATION_SIZE], ys[MAX_RESERVATION_SIZE];
+    if (signal(SIGINT, sig_handler) == SIG_ERR)
+      exit(EXIT_FAILURE);//CTRL-C
     switch (get_next(in_fd)) {
       case CMD_CREATE:
         if (parse_create(in_fd, &event_id, &num_rows, &num_columns) != 0) {

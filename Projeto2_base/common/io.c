@@ -16,6 +16,33 @@ void set_to_show(){
   to_show = 1;
 }
 
+void send_msg(int file, char const *str) {
+  size_t len = strlen(str);
+  size_t written = 0;
+  while (written < len) {
+    ssize_t ret = write(file, str + written, len - written);
+    if (ret < 0) {
+      fprintf(stderr, "Write failed\n");
+      exit(EXIT_FAILURE);
+    }
+    written += (size_t)(ret);
+  }
+}
+
+void read_msg(char *prod_consumidor,int file, size_t size) {
+  size_t reads = 0;
+  char msg[84] = {};
+  while (reads < size) {
+    ssize_t ret = read(file, msg - reads, size - reads);
+    if (ret < 0) {
+      fprintf(stderr, "Read failed\n");
+      exit(EXIT_FAILURE);
+    }
+    reads += (size_t)(ret);
+  }
+  memcpy(prod_consumidor, msg, strlen(msg)+1);
+}
+
 int parse_uint(int fd, unsigned int *value, char *next) {
   char buf[16];
 

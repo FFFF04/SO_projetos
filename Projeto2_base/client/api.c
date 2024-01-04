@@ -14,22 +14,6 @@
 #define MSG_SIZE 84
 
 int SESSION_ID, req_pipe, resp_pipe;
-char *req_pipe_nome;
-char *resp_pipe_nome;
-
-
-void send_msg(int file, char const *str) {
-  size_t len = strlen(str);
-  size_t written = 0;
-  while (written < len) {
-    ssize_t ret = write(file, str + written, len - written);
-    if (ret < 0) {
-      fprintf(stderr, "Write failed\n");
-      exit(EXIT_FAILURE);
-    }
-    written += (size_t)(ret);
-  }
-}
 
 void read_wait(int file, char *buffer, size_t size){
   ssize_t ret = read(file, buffer, size);
@@ -66,19 +50,14 @@ int ems_setup(char const* req_pipe_path, char const* resp_pipe_path, char const*
     fprintf(stderr, "mkfifo failed\n");
     exit(EXIT_FAILURE);
   } 
-
-  req_pipe_nome = (char*) malloc(strlen(req_pipe_path) + 1);
-  if (req_pipe_nome == NULL) {
+  if (req_pipe_path == NULL) {
     fprintf(stderr, "Error: Memory allocation failed\n");
     exit(EXIT_FAILURE);
   }
-  resp_pipe_nome = (char*) malloc(strlen(resp_pipe_path) + 1);
-  if (resp_pipe_nome == NULL) {
+  if (resp_pipe_path == NULL) {
     fprintf(stderr, "Error: Memory allocation failed\n");
     exit(EXIT_FAILURE);
   }
-  strncpy(req_pipe_nome, req_pipe_path, strlen(req_pipe_path) + 1);
-  strncpy(resp_pipe_nome, resp_pipe_path, strlen(resp_pipe_path) + 1);
   snprintf(msg, 84, "1 %s %s", req_pipe_path, resp_pipe_path);
   int chars_written = snprintf(msg, MSG_SIZE, "1 %s %s", req_pipe_path, resp_pipe_path);
   if (chars_written < 0 || chars_written >= MSG_SIZE) {
@@ -110,25 +89,10 @@ int ems_quit(void) {
     exit(EXIT_FAILURE);
   }
   /*FALTA DAR ERROS*/
-  if (close(req_pipe) == -1) {
-    perror("Error closing req_pipe");
+  if (close(req_pipe) == -1 || close(resp_pipe) == -1) {
+    fprintf(stderr,"Error closing pipe");
     exit(EXIT_FAILURE);
   }
-  if (close(resp_pipe) == -1) {
-    perror("Error closing resp_pipe");
-    exit(EXIT_FAILURE);
-  }
-  if (unlink(req_pipe_nome) == -1) {
-    perror("Error unlinking req_pipe_nome");
-    exit(EXIT_FAILURE);
-  }
-
-  if (unlink(resp_pipe_nome) == -1) {
-    perror("Error unlinking resp_pipe_nome");
-    exit(EXIT_FAILURE);
-  }
-  free(req_pipe_nome);
-  free(resp_pipe_nome);
   return 0;
 }
 

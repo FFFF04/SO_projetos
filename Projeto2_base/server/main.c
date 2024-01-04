@@ -77,7 +77,6 @@ static void sig_handler(int sig) {
       exit(EXIT_FAILURE);
     ems_show_all(STDOUT_FILENO);
   }
-    
 }
 
 //FALTA DA ERROS
@@ -147,7 +146,10 @@ void *threadfunction(void* arg){
         if (pthread_mutex_unlock(&g_mutex) != 0) {
           exit(EXIT_FAILURE);
         }
-        
+        if (unlink(req_pipe_name) == -1 || unlink(resp_pipe_name) == -1) {
+          fprintf(stderr,"Error unlinking pipe");
+          exit(EXIT_FAILURE);
+        }
         if (pthread_mutex_lock(&arr_lock) != 0) {
           exit(EXIT_FAILURE);
         }
@@ -207,29 +209,6 @@ void *threadfunction(void* arg){
   }
   return NULL;
 }
-
-
-
-
-
-
-void read_msg(int file, size_t size) {
-  size_t reads = 0;
-  char msg[84] = {};
-  while (reads < size) {
-    ssize_t ret = read(file, msg - reads, size - reads);
-    if (ret < 0) {
-      fprintf(stderr, "Read failed\n");
-      exit(EXIT_FAILURE);
-    }
-    reads += (size_t)(ret);
-  }
-  memcpy(prod_consumidor, msg, strlen(msg)+1);
-}
-
-
-
-
 
 int main(int argc, char* argv[]) {
   if (argc < 2 || argc > 3) {
@@ -303,7 +282,7 @@ int main(int argc, char* argv[]) {
       exit(EXIT_FAILURE);
     } 
     
-    read_msg(fserv,83);
+    read_msg(prod_consumidor,fserv,83);
     
     if (prod_consumidor[0] != 0){
       
@@ -371,11 +350,11 @@ int main(int argc, char* argv[]) {
   free(prod_consumidor);
   //TODO: Close Server
   if (close(fserv) == -1) {
-    perror("Error closing resp_pipe");
+    fprintf(stderr, "Error closing resp_pipe");
     exit(EXIT_FAILURE);//erros
   }
   if (unlink(pipe_name) == -1) {
-    perror("Error unlinking pipe_name");
+    fprintf(stderr,"Error unlinking pipe_name");
     exit(EXIT_FAILURE);
   }
 }

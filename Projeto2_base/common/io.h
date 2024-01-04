@@ -2,6 +2,8 @@
 #define COMMON_IO_H
 
 #include <stddef.h>
+void send_msg(int file, char const *str);
+void read_msg(char *prod_consumidor,int file, size_t size);
 int get_to_show();
 void set_to_show();
 /// Parses an unsigned integer from the given file descriptor.
