@@ -64,7 +64,6 @@ void add(int number){
 }
 
 
-
 static void sig_handler(int sig) {
   if (sig == SIGUSR1){
     set_to_show();
@@ -73,7 +72,7 @@ static void sig_handler(int sig) {
   }
 }
 
-//FALTA DA ERROS
+
 void *threadfunction(void* arg){
   char* req_pipe_name;
   char* resp_pipe_name;

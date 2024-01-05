@@ -73,7 +73,6 @@ int ems_setup(char const* req_pipe_path, char const* resp_pipe_path, char const*
     fprintf(stderr, "api-Pipe open failed\n");
     exit(EXIT_FAILURE);
   }
-  // read_wait(resp_pipe, buffer, 16);
   read(resp_pipe,buffer,16);
   SESSION_ID = atoi(buffer);
   return 0;
@@ -81,10 +80,8 @@ int ems_setup(char const* req_pipe_path, char const* resp_pipe_path, char const*
 
 int ems_quit(void) { 
   //TODO: close pipes
-  // send_msg(req_pipe, "2");
   int op = 2;
   if(write(req_pipe, &op, sizeof(int)) < 0){}
-  /*FALTA DAR ERROS*/
   if (close(req_pipe) == -1 || close(resp_pipe) == -1) {
     fprintf(stderr,"Error closing pipe");
     exit(EXIT_FAILURE);
@@ -97,9 +94,6 @@ int ems_quit(void) {
 int ems_create(unsigned int event_id, size_t num_rows, size_t num_cols) {
   // TODO: send create request to the server (through the request pipe) 
   // and wait for the response (through the response pipe)
-  // char buffer[16], msg[TAMMSG];
-  // snprintf(msg, TAMMSG, "3 %u %zu %zu\n", event_id, num_rows, num_cols);
-  // send_msg(req_pipe, msg);
   int return_value, op = 3;
   if(write(req_pipe, &op, sizeof(int))<0){
     fprintf(stderr, "Write failed\n");
@@ -121,9 +115,6 @@ int ems_create(unsigned int event_id, size_t num_rows, size_t num_cols) {
       fprintf(stderr, "Read failed\n");
       exit(EXIT_FAILURE);
   }
-  // read_wait(resp_pipe, buffer, 16);
-
-  // int return_value = (atoi(buffer));
   return return_value;
 }
 
@@ -175,7 +166,7 @@ int ems_show(int out_fd, unsigned int event_id) {
   }
   if(write(req_pipe, &event_id, sizeof(unsigned int))<0){
     fprintf(stderr, "write failed\n");
-    return -1;////
+    exit(EXIT_FAILURE);
   }
   if (read(resp_pipe, &return_value, sizeof(int)) < 0 || read(resp_pipe, &num_rows, sizeof(size_t)) < 0
     || read(resp_pipe, &num_columns, sizeof(size_t)) < 0) {
