@@ -81,7 +81,9 @@ int ems_setup(char const* req_pipe_path, char const* resp_pipe_path, char const*
 
 int ems_quit(void) { 
   //TODO: close pipes
-  send_msg(req_pipe, "2");
+  // send_msg(req_pipe, "2");
+  int op = 2;
+  if(write(req_pipe, &op, sizeof(int)) < 0){}
   /*FALTA DAR ERROS*/
   if (close(req_pipe) == -1 || close(resp_pipe) == -1) {
     fprintf(stderr,"Error closing pipe");
@@ -95,13 +97,33 @@ int ems_quit(void) {
 int ems_create(unsigned int event_id, size_t num_rows, size_t num_cols) {
   // TODO: send create request to the server (through the request pipe) 
   // and wait for the response (through the response pipe)
-  char buffer[16], msg[TAMMSG];
-  snprintf(msg, TAMMSG, "3 %u %zu %zu\n", event_id, num_rows, num_cols);
-  send_msg(req_pipe, msg);
+  // char buffer[16], msg[TAMMSG];
+  // snprintf(msg, TAMMSG, "3 %u %zu %zu\n", event_id, num_rows, num_cols);
+  // send_msg(req_pipe, msg);
+  int return_value, op = 3;
+  if(write(req_pipe, &op, sizeof(int))<0){
+    fprintf(stderr, "Write failed\n");
+    exit(EXIT_FAILURE);
+  }
+  if(write(req_pipe, &event_id, sizeof(unsigned int))<0){
+    fprintf(stderr, "Write failed\n");
+    exit(EXIT_FAILURE);
+  }
+  if(write(req_pipe, &num_rows, sizeof(size_t))<0){
+    fprintf(stderr, "Write failed\n");
+    exit(EXIT_FAILURE);
+  }
+  if(write(req_pipe,&num_cols, sizeof(size_t))<0){
+    fprintf(stderr, "Write failed\n");
+    exit(EXIT_FAILURE);
+  }
+  if (read(resp_pipe, &return_value, sizeof(int)) < 0) {
+      fprintf(stderr, "Read failed\n");
+      exit(EXIT_FAILURE);
+  }
+  // read_wait(resp_pipe, buffer, 16);
 
-  read_wait(resp_pipe, buffer, 16);
-
-  int return_value = (atoi(buffer));
+  // int return_value = (atoi(buffer));
   return return_value;
 }
 
@@ -110,19 +132,44 @@ int ems_create(unsigned int event_id, size_t num_rows, size_t num_cols) {
 int ems_reserve(unsigned int event_id, size_t num_seats, size_t* xs, size_t* ys) {
   // TODO: send reserve request to the server (through the request pipe) 
   // and wait for the response (through the response pipe)
-  char buffer[TAMMSG], msg[TAMMSG], seat[16] = {};
-  snprintf(msg, TAMMSG, "4 %u %zu ", event_id, num_seats);
-  for (size_t i = 0; i < num_seats; i++){
-    snprintf(seat, 16, "%ld %ld ", xs[i], ys[i]);
-    strcat(msg,seat);
-    memset(seat,0,16);
+  // char buffer[TAMMSG], msg[TAMMSG], seat[16] = {};
+  //snprintf(msg, TAMMSG, "4 %u %zu ", event_id, num_seats);
+  int return_value, op = 4;
+  // for(size_t i = 0; i<num_seats; i++)
+  //   printf("xs: %ld ys: %ld\n", xs[i], ys[i]);
+  if(write(req_pipe, &op, sizeof(int))<0){
+    fprintf(stderr, "Write failed\n");
+    exit(EXIT_FAILURE);
   }
-  send_msg(req_pipe, msg);
+  if(write(req_pipe, &event_id, sizeof(unsigned int))<0){
+    fprintf(stderr, "Write failed\n");
+    exit(EXIT_FAILURE);
+  }
+  if(write(req_pipe, &num_seats, sizeof(size_t))<0){
+    fprintf(stderr, "Write failed\n");
+    exit(EXIT_FAILURE);
+  }
+  if(write(req_pipe, xs, sizeof(size_t) * MAX_RESERVATION_SIZE)<0){
+    fprintf(stderr, "Write failed\n");
+    exit(EXIT_FAILURE);
+  }
+  if(write(req_pipe, ys, sizeof(size_t) * MAX_RESERVATION_SIZE)<0){
+    fprintf(stderr, "Write failed\n");
+    exit(EXIT_FAILURE);
+  }
+  // for (size_t i = 0; i < num_seats; i++){
+  //   snprintf(seat, 16, "%ld %ld ", xs[i], ys[i]);
+  //   strcat(msg,seat);
+  //   memset(seat,0,16);
+  // }
+  // send_msg(req_pipe, msg);
 
-  read_wait(resp_pipe, buffer, TAMMSG);
+  // read_wait(resp_pipe, buffer, TAMMSG);
 
-  int return_value = (atoi(strtok(buffer, " ")));
-
+  if (read(resp_pipe, &return_value, sizeof(int)) < 0) {
+    fprintf(stderr, "Read failed\n");
+    exit(EXIT_FAILURE);
+  }
   return return_value;
 }
 
@@ -131,25 +178,53 @@ int ems_reserve(unsigned int event_id, size_t num_seats, size_t* xs, size_t* ys)
 int ems_show(int out_fd, unsigned int event_id) {
   // TODO: send show request to the server (through the request pipe) 
   // and wait for the response (through the response pipe)
-  char buffer[TAMMSG], msg[TAMMSG];
-  snprintf(msg, TAMMSG, "5 %u ", event_id);
-  ssize_t ret;
-  send_msg(req_pipe, msg);
-
-  read_wait(resp_pipe, buffer, TAMMSG);
-  ret = (size_t)(atoi(strtok(buffer, " ")));
-  if(ret != 1){
-    size_t num_rows = (size_t)(atoi(strtok(NULL, " ")));
-    size_t num_columns = (size_t)(atoi(strtok(NULL, " ")));
-    char *mensagem = strtok(NULL,"|");
-    ret = write(out_fd, mensagem, (num_columns*num_rows*2));
-    if (ret == -1){
-      fprintf(stderr, "write failed\n");
-      exit(EXIT_FAILURE);
-    }
-    return 0;
+  //  char buffer[TAMMSG];//, msg[TAMMSG]
+  // snprintf(msg, TAMMSG, "5 %u ", event_id);
+  size_t num_columns, num_rows;
+  unsigned int seats;
+  char seat[16] = {};
+  // ssize_t ret;
+  // send_msg(req_pipe, msg);
+  int return_value, op = 5;
+  if(write(req_pipe, &op, sizeof(int))<0){
+    fprintf(stderr, "Write failed\n");
+    exit(EXIT_FAILURE);
   }
-  return 1;
+  if(write(req_pipe, &event_id, sizeof(unsigned int))<0){
+    fprintf(stderr, "write failed\n");
+    return -1;////
+  }
+  if (read(resp_pipe, &return_value, sizeof(int)) < 0 || read(resp_pipe, &num_rows, sizeof(size_t)) < 0
+    || read(resp_pipe, &num_columns, sizeof(size_t)) < 0) {
+    fprintf(stderr, "Read failed\n");
+    exit(EXIT_FAILURE);
+  }
+  if(return_value != 1){
+    for (size_t i = 1; i <= num_rows; i++) {
+      for (size_t j = 1; j <= num_columns; j++) {
+        if (read(resp_pipe, &seats, sizeof(unsigned int)) < 0) {
+          fprintf(stderr, "Read failed\n");
+          exit(EXIT_FAILURE);
+        }
+        sprintf(seat, "%u" , seats);
+        if (print_str(out_fd, seat)){
+          perror("Error writing to file descriptor");
+          return 1;
+        }
+        if (j < num_columns){
+          if (print_str(out_fd," ")){
+            perror("Error writing to file descriptor");
+            return 1;
+          }
+        }
+      }
+      if (print_str(out_fd,"\n")){
+        perror("Error writing to file descriptor");
+        return 1;
+      }
+    }
+  }
+  return return_value;
 }
 
 
@@ -157,26 +232,42 @@ int ems_show(int out_fd, unsigned int event_id) {
 int ems_list_events(int out_fd) {
   // TODO: send list request to the server (through the request pipe) 
   // and wait for the response (through the response pipe)
-  char buffer[TAMMSG], msg[TAMMSG];
-  snprintf(msg, TAMMSG, "6");
-  ssize_t ret;
-  send_msg(req_pipe, msg);
-
-  read_wait(resp_pipe, buffer, TAMMSG);
-  ret = (atoi(strtok(buffer, " ")));
-  if(ret != 1){
-    size_t num_events = (size_t)(atoi(strtok(NULL, " ")));
-    while(num_events != 0){
-      char *mensagem = strtok(NULL,"|");
-      ret = write(out_fd, mensagem, strlen(mensagem));
-      if (ret == -1){
-        fprintf(stderr, "write failed\n");
-        exit(EXIT_FAILURE);
-      }
-      num_events--;
-      memset(mensagem,0,strlen(mensagem));
-    }
-    return 0;
+   char msg[20] = {};//,buffer[TAMMSG]; 
+  // snprintf(msg, TAMMSG, "6");
+  //ssize_t ret;
+  // send_msg(req_pipe, msg);
+  int return_value;
+  size_t num_events;
+  unsigned int ids;
+  int op = 6;
+  if(write(req_pipe, &op, sizeof(int))<0){
+    fprintf(stderr, "Write failed\n");
+    exit(EXIT_FAILURE);
   }
-  return 1;
+  if (read(resp_pipe, &return_value, sizeof(int)) < 0 || read(resp_pipe, &num_events, sizeof(size_t)) < 0) {
+    fprintf(stderr, "Read failed\n");
+    exit(EXIT_FAILURE);
+  }
+  if(return_value != 1){
+    if(num_events == 0){//NO EVENTS
+      if (print_str(out_fd, "No events\n")){
+        perror("Error writing to file descriptor");
+        return 1;
+      }
+    }
+    else{
+      for (size_t i = 1; i <= num_events; i++) {
+        if (read(resp_pipe, &ids, sizeof(unsigned int)) < 0) {
+          fprintf(stderr, "Read failed\n");
+          exit(EXIT_FAILURE);
+        }
+        sprintf(msg,"Event: %u\n",ids);
+        if (print_str(out_fd, msg)){
+          perror("Error writing to file descriptor");
+          return 1;
+        }
+      }
+    }
+  }
+  return return_value;
 }

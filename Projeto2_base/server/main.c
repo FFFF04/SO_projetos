@@ -38,8 +38,10 @@ pthread_mutex_t arr_lock = PTHREAD_MUTEX_INITIALIZER;
 
 
 int del(){
-  int valor = arr[0];
-  for (int i = 1; i < size_arr; i++)
+  printf("%d\n",size_arr);
+  fflush(stdout);
+  int valor = arr[1];
+  for (int i = 2; i < size_arr; i++)
     arr[i - 1] = arr[i];
   arr = realloc(arr, (size_t)(size_arr - 1) * sizeof(int));
   if(arr != NULL)
@@ -77,7 +79,6 @@ static void sig_handler(int sig) {
     // write(STDOUT_FILENO, "SIIIIIIIIIIIIIIIIIIIIIIIIMMMMM\n", 30);
     // if (signal(SIGUSR1, sig_handler) == SIG_ERR)
     //   exit(EXIT_FAILURE);
-    ems_show_all(STDOUT_FILENO);
     set_to_show();
     show_all = 1;
 
@@ -129,27 +130,15 @@ void *threadfunction(void* arg){
   }
   while (1){
     unsigned int event_id;
-    char buffer[TAMMSG];
-    ssize_t ret = read(freq, buffer, TAMMSG);
+    int return_value;
+    int code_number;
+    ssize_t ret = read(freq, &code_number, sizeof(code_number));
     if (ret == -1) {
       fprintf(stderr, "Read failed\n");
       exit(EXIT_FAILURE);
     }
-    if (buffer[0] == 0)
-      continue;
-    
-    int code_number = atoi(strtok(buffer, " "));
-    buffer[ret] = 0;
     switch (code_number) {
       case 2:
-        if (pthread_mutex_lock(&g_mutex) != 0) {
-          exit(EXIT_FAILURE);
-        }
-        active--;
-        pthread_cond_signal(&cond);
-        if (pthread_mutex_unlock(&g_mutex) != 0) {
-          exit(EXIT_FAILURE);
-        }
         if (unlink(req_pipe_name) == -1 || unlink(resp_pipe_name) == -1) {
           fprintf(stderr,"Error unlinking pipe");
           exit(EXIT_FAILURE);
@@ -161,41 +150,57 @@ void *threadfunction(void* arg){
         if (pthread_mutex_unlock(&arr_lock) != 0) {
           exit(EXIT_FAILURE);
         }
+        if (pthread_mutex_lock(&g_mutex) != 0) {
+          exit(EXIT_FAILURE);
+        }
+        active--;
+        pthread_cond_signal(&cond);
+        if (pthread_mutex_unlock(&g_mutex) != 0) {
+          exit(EXIT_FAILURE);
+        }
+        
         return NULL;
       case 3:
-        event_id = (unsigned int)(atoi(strtok(NULL, " ")));
-        size_t num_rows = (size_t)(atoi(strtok(NULL, " ")));
-        size_t num_columns = (size_t)(atoi(strtok(NULL, " ")));
-        if(ems_create(event_id, num_rows, num_columns))
-          send_msg(fresp,"1\n");
-        else
-          send_msg(fresp,"0\n");
+        size_t num_rows, num_columns;
+        if(read(freq, &event_id, sizeof(unsigned int)) < 0 || read(freq, &num_rows, sizeof(size_t)) < 0 
+          || read(freq, &num_columns, sizeof(size_t)) < 0){
+          fprintf(stderr, "Read failed\n");
+          exit(EXIT_FAILURE);
+        }
+        return_value = ems_create(event_id, num_rows, num_columns);
+        if(write(fresp,&return_value, sizeof(int)) < 0){
+          fprintf(stderr, "Write failed\n");
+          exit(EXIT_FAILURE);
+        }
         break;
       case 4:
-        event_id = (unsigned int)(atoi(strtok(NULL, " ")));
-        size_t num_coords = (size_t)(atoi(strtok(NULL, " ")));
+        size_t num_coords;
         size_t xs[MAX_RESERVATION_SIZE], ys[MAX_RESERVATION_SIZE];
-        for (size_t i = 0; i < num_coords; i++) {
-          xs[i] = (size_t)atoi(strtok(NULL, " "));
-          ys[i] = (size_t)atoi(strtok(NULL, " "));
+        if(read(freq, &event_id, sizeof(unsigned int)) < 0 || read(freq, &num_coords, sizeof(size_t)) < 0 ||
+          read(freq, &xs, sizeof(size_t) * MAX_RESERVATION_SIZE) < 0 
+          || read(freq, &ys, sizeof(size_t) * MAX_RESERVATION_SIZE) < 0){
+          fprintf(stderr, "Read failed\n");
+          exit(EXIT_FAILURE);
         }
-
-        if(ems_reserve(event_id, num_coords, xs, ys))
-          send_msg(fresp,"1\n");
-        else
-          send_msg(fresp,"0\n");
+        return_value = ems_reserve(event_id, num_coords, xs, ys);
+        if(write(fresp,&return_value, sizeof(int)) < 0){
+          fprintf(stderr, "Write failed\n");
+          exit(EXIT_FAILURE);
+        }
         break;
       case 5:
-        event_id = (unsigned int)(atoi(strtok(NULL, " ")));
+        if(read(freq, &event_id, sizeof(unsigned int)) < 0){
+          fprintf(stderr, "Read failed\n");
+          exit(EXIT_FAILURE);
+        }
         ems_show(fresp, event_id);
         break;
       case 6:
         ems_list_events(fresp);
         break;
     }
-    memset(buffer, 0, TAMMSG);
+    // memset(buffer, 0, TAMMSG);
   }
-
   if (pthread_mutex_lock(&arr_lock) != 0) {
     exit(EXIT_FAILURE);
   }
@@ -253,14 +258,14 @@ int main(int argc, char* argv[]) {
     fprintf(stderr, "Error: Memory allocation failed\n");
     exit(EXIT_FAILURE);
   }
-  arr = (int*) malloc(sizeof(int) * (size_t)(S));
+  arr = (int*) malloc(sizeof(int) * (size_t)(S+1));
   if (arr == NULL) {
     fprintf(stderr, "Error: Memory allocation failed\n");
     exit(EXIT_FAILURE);
   }
-  size_arr = S;
+  size_arr = S+1;
   for (int k = 0; k < S; k++){
-    arr[k] = k;
+    arr[k+1] = k;
     clients[k].session_id = k;
     pthread_mutex_init(&clients[k].session_lock, NULL); ///DAR ERRO
     pthread_mutex_lock(&clients[k].session_lock);
@@ -278,14 +283,7 @@ int main(int argc, char* argv[]) {
   } 
   int cria_threads = 0;
   while (1) {
-    //TODO: Read from pipe
-    // if (signal(SIGINT, sig_handler) == SIG_ERR)
-    //   exit(EXIT_FAILURE);//CTRL-C
-    // if (signal(SIGUSR1, sig_handler) == SIG_ERR){
-    //   exit(EXIT_FAILURE);
-    // } 
     if(show_all == 1){
-      write(STDOUT_FILENO, "SIIIIIIIIIIIIIIIIIIIIIIIIMMMMM\n", 30);
       ems_show_all(STDOUT_FILENO);
       reset_to_show();
       show_all = 0;
@@ -297,7 +295,7 @@ int main(int argc, char* argv[]) {
       
       if (pthread_mutex_lock(&g_mutex) != 0) 
         exit(EXIT_FAILURE);
-      
+      printf("active: %d\n",active);
       while (active == S){
         pthread_cond_wait(&cond, &g_mutex);
       }
@@ -305,7 +303,6 @@ int main(int argc, char* argv[]) {
       if (pthread_mutex_lock(&arr_lock) != 0) {
         exit(EXIT_FAILURE);
       }
-
       int index = del();
       if (pthread_mutex_unlock(&arr_lock) != 0) {
         exit(EXIT_FAILURE);
@@ -333,7 +330,6 @@ int main(int argc, char* argv[]) {
       if(enter_session == S-1)
         cria_threads = 1;
       pthread_cond_broadcast(&sessions);
-      
       active++;
       if (pthread_mutex_unlock(&g_mutex) != 0) {
         exit(EXIT_FAILURE);
