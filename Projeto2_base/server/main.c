@@ -38,8 +38,6 @@ pthread_mutex_t arr_lock = PTHREAD_MUTEX_INITIALIZER;
 
 
 int del(){
-  printf("%d\n",size_arr);
-  fflush(stdout);
   int valor = arr[1];
   for (int i = 2; i < size_arr; i++)
     arr[i - 1] = arr[i];
@@ -295,7 +293,6 @@ int main(int argc, char* argv[]) {
       
       if (pthread_mutex_lock(&g_mutex) != 0) 
         exit(EXIT_FAILURE);
-      printf("active: %d\n",active);
       while (active == S){
         pthread_cond_wait(&cond, &g_mutex);
       }
