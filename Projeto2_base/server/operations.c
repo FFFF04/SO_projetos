@@ -330,14 +330,10 @@ void ems_show_all(int out_fd){
       fprintf(stderr, "Error locking list rwl\n");
       return;
     }
-    unsigned int event_id;//*events_ids;
-    // int num_event = 0;
+    unsigned int event_id;
     struct ListNode* current = head;
     char seat[16] = {};
     while (1) {
-      //num_event++;
-      //events_ids = realloc(events_ids, (size_t)(num_event) * sizeof(unsigned int));
-      //events_ids[num_event - 1] = current->event->id;
       event_id = current->event->id;
       struct Event* event = get_event_with_delay(event_id, event_list->head, event_list->tail);
       if (print_str(out_fd, "Event: ")) {

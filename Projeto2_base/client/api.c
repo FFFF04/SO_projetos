@@ -132,11 +132,7 @@ int ems_create(unsigned int event_id, size_t num_rows, size_t num_cols) {
 int ems_reserve(unsigned int event_id, size_t num_seats, size_t* xs, size_t* ys) {
   // TODO: send reserve request to the server (through the request pipe) 
   // and wait for the response (through the response pipe)
-  // char buffer[TAMMSG], msg[TAMMSG], seat[16] = {};
-  //snprintf(msg, TAMMSG, "4 %u %zu ", event_id, num_seats);
   int return_value, op = 4;
-  // for(size_t i = 0; i<num_seats; i++)
-  //   printf("xs: %ld ys: %ld\n", xs[i], ys[i]);
   if(write(req_pipe, &op, sizeof(int))<0){
     fprintf(stderr, "Write failed\n");
     exit(EXIT_FAILURE);
@@ -157,15 +153,6 @@ int ems_reserve(unsigned int event_id, size_t num_seats, size_t* xs, size_t* ys)
     fprintf(stderr, "Write failed\n");
     exit(EXIT_FAILURE);
   }
-  // for (size_t i = 0; i < num_seats; i++){
-  //   snprintf(seat, 16, "%ld %ld ", xs[i], ys[i]);
-  //   strcat(msg,seat);
-  //   memset(seat,0,16);
-  // }
-  // send_msg(req_pipe, msg);
-
-  // read_wait(resp_pipe, buffer, TAMMSG);
-
   if (read(resp_pipe, &return_value, sizeof(int)) < 0) {
     fprintf(stderr, "Read failed\n");
     exit(EXIT_FAILURE);
@@ -178,13 +165,9 @@ int ems_reserve(unsigned int event_id, size_t num_seats, size_t* xs, size_t* ys)
 int ems_show(int out_fd, unsigned int event_id) {
   // TODO: send show request to the server (through the request pipe) 
   // and wait for the response (through the response pipe)
-  //  char buffer[TAMMSG];//, msg[TAMMSG]
-  // snprintf(msg, TAMMSG, "5 %u ", event_id);
   size_t num_columns, num_rows;
   unsigned int seats;
   char seat[16] = {};
-  // ssize_t ret;
-  // send_msg(req_pipe, msg);
   int return_value, op = 5;
   if(write(req_pipe, &op, sizeof(int))<0){
     fprintf(stderr, "Write failed\n");
@@ -228,14 +211,10 @@ int ems_show(int out_fd, unsigned int event_id) {
 }
 
 
-/*FALTA DAR ERROS*/
 int ems_list_events(int out_fd) {
   // TODO: send list request to the server (through the request pipe) 
   // and wait for the response (through the response pipe)
-   char msg[20] = {};//,buffer[TAMMSG]; 
-  // snprintf(msg, TAMMSG, "6");
-  //ssize_t ret;
-  // send_msg(req_pipe, msg);
+  char msg[20] = {};
   int return_value;
   size_t num_events;
   unsigned int ids;
@@ -249,7 +228,7 @@ int ems_list_events(int out_fd) {
     exit(EXIT_FAILURE);
   }
   if(return_value != 1){
-    if(num_events == 0){//NO EVENTS
+    if(num_events == 0){
       if (print_str(out_fd, "No events\n")){
         perror("Error writing to file descriptor");
         return 1;

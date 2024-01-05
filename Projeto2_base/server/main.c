@@ -66,17 +66,7 @@ void add(int number){
 
 
 static void sig_handler(int sig) {
-  // if (sig == SIGINT) {
-  //   if (signal(SIGINT, sig_handler) == SIG_ERR)
-  //     exit(EXIT_FAILURE);
-  //   // set_to_show();
-  //   kill(getpid(),SIGUSR1);
-  //   return;
-  // }
   if (sig == SIGUSR1){
-    // write(STDOUT_FILENO, "SIIIIIIIIIIIIIIIIIIIIIIIIMMMMM\n", 30);
-    // if (signal(SIGUSR1, sig_handler) == SIG_ERR)
-    //   exit(EXIT_FAILURE);
     set_to_show();
     show_all = 1;
 
@@ -197,7 +187,6 @@ void *threadfunction(void* arg){
         ems_list_events(fresp);
         break;
     }
-    // memset(buffer, 0, TAMMSG);
   }
   if (pthread_mutex_lock(&arr_lock) != 0) {
     exit(EXIT_FAILURE);
@@ -265,7 +254,10 @@ int main(int argc, char* argv[]) {
   for (int k = 0; k < S; k++){
     arr[k+1] = k;
     clients[k].session_id = k;
-    pthread_mutex_init(&clients[k].session_lock, NULL); ///DAR ERRO
+    if(pthread_mutex_init(&clients[k].session_lock, NULL)!= 0){
+      fprintf(stderr, "Mutex initialization failed \n");
+      exit(EXIT_FAILURE);
+    } 
     pthread_mutex_lock(&clients[k].session_lock);
     if (pthread_create(&thread_id[k], NULL, &threadfunction, &clients[k]) != 0){
       fprintf(stderr, "Failed to create thread\n");
@@ -353,7 +345,7 @@ int main(int argc, char* argv[]) {
   //TODO: Close Server
   if (close(fserv) == -1) {
     fprintf(stderr, "Error closing resp_pipe");
-    exit(EXIT_FAILURE);//erros
+    exit(EXIT_FAILURE);
   }
   if (unlink(pipe_name) == -1) {
     fprintf(stderr,"Error unlinking pipe_name");
